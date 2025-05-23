@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+    <name>hector_multi_robot_announcement</name>
+    <version>0.0.0</version>
+    <description>Announcement tools for multi robot use.</description>
+
+    <maintainer email="fabian@sim.tu-darmstadt.de">Stefan Fabian</maintainer>
+    <license>MIT</license>
+    <author email="fabian@sim.tu-darmstadt.de">Stefan Fabian</author>
+
+    <buildtool_depend>ament_cmake</buildtool_depend>
+    <depend>hector_multi_robot_msgs</depend>
+    <depend>rclcpp</depend>
+    <depend>rclcpp_components</depend>
+
+    <export>
+        <build_type>ament_cmake</build_type>
+    </export>
+</package>
