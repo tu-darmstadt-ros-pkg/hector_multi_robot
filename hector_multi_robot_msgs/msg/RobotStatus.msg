@@ -2,8 +2,9 @@ builtin_interfaces/Time timestamp
 string robot_id
 # Battery level in percent from 0 to 100, use -1 to indicate unknown
 int8 battery_level
-# Battery voltage in V
-float32 battery_voltage
+# Battery voltages in V
+float32 battery_1_voltage
+float32 battery_2_voltage
 # Robot status
 uint8 status_code
 # Additional status message for human-readable information
