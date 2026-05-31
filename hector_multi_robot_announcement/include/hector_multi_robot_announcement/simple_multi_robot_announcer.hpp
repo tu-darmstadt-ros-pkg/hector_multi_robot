@@ -3,11 +3,12 @@
 
 #include <memory>
 #include <string>
-#include <vector>
 
 #include <hector_multi_robot_msgs/msg/robot_announcement.hpp>
 #include <hector_multi_robot_msgs/msg/robot_status.hpp>
 #include <rclcpp/rclcpp.hpp>
+
+#include "hector_multi_robot_announcement/tf_forwarding.hpp"
 
 namespace hector_multi_robot_announcement
 {
@@ -21,13 +22,15 @@ private:
   //! @brief Sets up subscribers, publishers, etc. to configure the node
   void setup();
 
-private:
   rclcpp::Publisher<hector_multi_robot_msgs::msg::RobotAnnouncement>::SharedPtr announcement_publisher_;
   rclcpp::Publisher<hector_multi_robot_msgs::msg::RobotAnnouncement>::SharedPtr global_announcement_publisher_;
 
   std::string robot_id_;
   std::string robot_name_;
   std::string robot_namespace_;
+
+  //! @brief Forwards the robot's namespaced tf tree to the global tf tree (inert unless enabled).
+  std::unique_ptr<TfForwarder> tf_forwarder_;
 };
 
 } // namespace hector_multi_robot_announcement

@@ -1,0 +1,40 @@
+# Example configuration for hector_multi_robot_announcement::SimpleMultiRobotAnnouncer.
+#
+# The announcer:
+#   * publishes a one-shot RobotAnnouncement on `robot_announcement` (namespaced) and
+#     `/robot_announcement` (global, transient_local).
+#   * forwards `<robot_namespace>/tf` to global `/tf` (when `enable_tf_forwarding` is true),
+#     prefixing frame ids with `<robot_namespace>/` and rate-limiting per child frame.
+#   * forwards `<robot_namespace>/tf_static` to global `/tf_static` (no rate limit).
+#
+# Frames listed in `tf_config.global_frames` are NOT prefixed when forwarded (use this for
+# shared frames such as `world` that exist in the common multi-robot tf tree).
+#
+# Per-frame rate limits are declared under `tf_config.frame_configs.<child_frame_id>.rate` in Hz.
+# Frames not listed are limited to `tf_config.max_rate` Hz.
+
+# `/**` applies these parameters regardless of the node's namespace; replace with the node's
+# fully-qualified name (e.g. `/robot1/simple_announcer`) to target a single instance.
+/**:
+  ros__parameters:
+    robot_id: "robot1"
+    robot_name: "Robot One"
+    robot_namespace: "/robot1"
+
+    enable_tf_forwarding: true
+    tf_config:
+      max_rate: 30.0 # Max rate for all frames not listed below (Hz)
+
+      # Frames that should not be prefixed. To share no frames, omit this key entirely;
+      # an empty list (global_frames: []) aborts the node on startup (empty YAML sequences
+      # have no element type).
+      global_frames:
+        - world
+      frame_configs:
+        base_link:
+          rate: 10.0
+        odom:
+          rate: 5.0
+        # Explicit override: forward every message regardless of incoming rate.
+        imu_link:
+          rate: 0.0
