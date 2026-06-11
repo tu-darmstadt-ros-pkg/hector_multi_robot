@@ -175,7 +175,14 @@ TfForwarder::TfForwarder( rclcpp::Node &node, const std::string &robot_namespace
   // Canonicalize before building topic names: a trailing or repeated slash (e.g. "/robot1/")
   // would otherwise yield an invalid "/robot1//tf" and make create_subscription throw.
   const std::string ns = normalize_namespace( robot_namespace );
-  if ( ns == "/" || !node_.get_parameter( "enable_tf_forwarding" ).as_bool() ) {
+  const bool enabled = node_.get_parameter( "enable_tf_forwarding" ).as_bool();
+  if ( ns == "/" || !enabled ) {
+    if ( enabled )
+      RCLCPP_WARN( node_.get_logger(),
+                   "TF forwarding is enabled but the node is not namespaced; no transforms will be "
+                   "forwarded." );
+    else
+      RCLCPP_INFO( node_.get_logger(), "TF forwarding is disabled." );
     return;
   }
   frame_prefix_ = ns.substr( 1 ) + "/";
@@ -183,6 +190,20 @@ TfForwarder::TfForwarder( rclcpp::Node &node, const std::string &robot_namespace
   const auto global_frames_param =
       node_.get_parameter( "tf_config.global_frames" ).as_string_array();
   global_frames_.insert( global_frames_param.begin(), global_frames_param.end() );
+
+  RCLCPP_INFO_STREAM( node_.get_logger(), "TF forwarding is enabled: re-broadcasting '"
+                                              << ns << "/tf' onto the global tf tree with frame "
+                                                       "prefix '"
+                                              << frame_prefix_ << "'" );
+  if ( global_frames_.empty() ) {
+    RCLCPP_INFO( node_.get_logger(), "No global frames configured; all frame ids are prefixed." );
+  } else {
+    std::stringstream global_frames_log;
+    for ( const auto &frame : global_frames_ )
+      global_frames_log << " " << frame;
+    RCLCPP_INFO( node_.get_logger(), "Global frames (forwarded unprefixed):%s",
+                 global_frames_log.str().c_str() );
+  }
 
   load_config();
 
@@ -204,10 +225,14 @@ void TfForwarder::load_config()
   const std::optional<double> max_tf_rate = numeric_value_as_double( max_rate_value );
   if ( max_tf_rate && *max_tf_rate > 0.0 ) {
     default_interval = rclcpp::Duration::from_seconds( 1.0 / *max_tf_rate );
+    RCLCPP_INFO( node_.get_logger(), "TF forwarding default max rate: %.1f Hz", *max_tf_rate );
   } else if ( !max_tf_rate ) {
     RCLCPP_WARN( node_.get_logger(),
                  "Ignoring non-numeric rate for parameter 'tf_config.max_rate'; frames without "
                  "an explicit rate will be forwarded without rate limiting." );
+  } else {
+    RCLCPP_INFO( node_.get_logger(), "TF forwarding has no default rate limit; frames without an "
+                                     "explicit rate are forwarded on every message." );
   }
 
   // Per-frame rates come straight from the parameter overrides via parse_frame_intervals.

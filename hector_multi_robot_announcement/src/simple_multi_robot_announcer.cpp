@@ -1,6 +1,7 @@
 #include "hector_multi_robot_announcement/simple_multi_robot_announcer.hpp"
 
 #include <algorithm>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -39,6 +40,19 @@ rclcpp::NodeOptions bypass_global_tf_remap( const rclcpp::NodeOptions &options )
   rclcpp::NodeOptions opts = options;
   opts.arguments( std::move( arguments ) );
   return opts;
+}
+
+//! @brief Maximum number of configuration entries logged on startup.
+constexpr size_t kMaxLoggedConfigKeys = 10;
+//! @brief Maximum length of a configuration value in the startup log; longer values are
+//!        truncated with a trailing ellipsis so the total stays within the limit.
+constexpr size_t kMaxLoggedValueLength = 40;
+
+std::string truncate_for_log( const std::string &value )
+{
+  if ( value.size() <= kMaxLoggedValueLength )
+    return value;
+  return value.substr( 0, kMaxLoggedValueLength - 3 ) + "...";
 }
 } // namespace
 
@@ -82,6 +96,26 @@ void SimpleMultiRobotAnnouncer::setup()
   RCLCPP_INFO_STREAM( get_logger(), "Announcing robot named '"
                                         << robot_name_ << "' with id '" << robot_id_
                                         << "' in namespace: " << robot_namespace_ );
+  if ( !robot_type_.empty() )
+    RCLCPP_INFO_STREAM( get_logger(), "Robot type: " << robot_type_ );
+
+  if ( configuration_.empty() ) {
+    RCLCPP_INFO( get_logger(), "No configuration keys." );
+  } else {
+    std::ostringstream config_log;
+    config_log << "Configuration (" << configuration_.size() << " keys):";
+    size_t logged = 0;
+    for ( const auto &[key, value] : configuration_ ) {
+      if ( logged++ >= kMaxLoggedConfigKeys )
+        break;
+      config_log << "\n  " << key << ": " << truncate_for_log( value );
+    }
+    if ( configuration_.size() > kMaxLoggedConfigKeys )
+      config_log << "\n  ... and " << ( configuration_.size() - kMaxLoggedConfigKeys )
+                 << " more";
+    RCLCPP_INFO_STREAM( get_logger(), config_log.str() );
+  }
+
   RobotAnnouncement announcement;
   announcement.header.stamp = now();
   announcement.id = robot_id_;
