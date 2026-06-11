@@ -4,10 +4,8 @@
 #include <thread>
 
 #include "hector_multi_robot_announcement/tf_forwarding.hpp"
-#include "hector_multi_robot_announcement/utils.hpp"
 
 using hector_multi_robot_announcement::FrameRateLimiter;
-using hector_multi_robot_announcement::normalize_namespace;
 using hector_multi_robot_announcement::numeric_value_as_double;
 using hector_multi_robot_announcement::parse_frame_intervals;
 using hector_multi_robot_announcement::prefix_frame_id;
@@ -114,22 +112,6 @@ TEST( PrefixTransform, PrefixesParentAndChild )
   const auto out2 = prefix_transform( in, "robot1/", global );
   EXPECT_EQ( out2.header.frame_id, "world" );
   EXPECT_EQ( out2.child_frame_id, "robot1/base_link" );
-}
-
-// --- normalize_namespace -----------------------------------------------------
-
-// Regression: a trailing or repeated slash in robot_namespace used to flow straight into the
-// subscription topic ("/robot1//tf"), which rmw rejects, throwing out of node construction.
-// normalize_namespace must canonicalize to a single leading slash, no repeats, no trailing slash.
-TEST( NormalizeNamespace, Canonicalizes )
-{
-  EXPECT_EQ( normalize_namespace( "/robot1" ), "/robot1" );             // already canonical
-  EXPECT_EQ( normalize_namespace( "robot1" ), "/robot1" );              // missing leading slash
-  EXPECT_EQ( normalize_namespace( "/robot1/" ), "/robot1" );            // trailing slash stripped
-  EXPECT_EQ( normalize_namespace( "/team//robot1/" ), "/team/robot1" ); // repeats collapsed
-  EXPECT_EQ( normalize_namespace( "" ), "/" );                          // empty -> root
-  EXPECT_EQ( normalize_namespace( "/" ), "/" );                         // root stays root
-  EXPECT_EQ( normalize_namespace( "//" ), "/" );
 }
 
 // --- FrameRateLimiter --------------------------------------------------------

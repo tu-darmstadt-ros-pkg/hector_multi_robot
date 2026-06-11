@@ -20,6 +20,18 @@
     robot_id: "robot1"
     robot_name: "Robot One"
     robot_namespace: "/robot1"
+    # string describing the type of robot, can be custom defined by the user
+    # but if possible stick to one of the following types for better interoperability
+    # wheeled | tracked | legged | quadcopter | humanoid
+    type: "tracked"
+
+    configuration:
+      # Optional string key value pairs describing the robot's configuration.
+      main_track: "true"
+      # JSON array of the flipper link frame names. Could also be only two links if front and
+      # back are linked. Please follow convention of starting with front (left) going clockwise
+      # viewed from above.
+      flipper_links: '["flipper_fl_link", "flipper_fr_link", "flipper_br_link", "flipper_bl_link"]'
 
     enable_tf_forwarding: true
     tf_config:

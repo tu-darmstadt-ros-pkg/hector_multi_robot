@@ -58,6 +58,10 @@ if(BUILD_TESTING)
   ament_add_gtest(test_tf_forwarding test/test_tf_forwarding.cpp)
   target_link_libraries(test_tf_forwarding simple_multi_robot_announcer_component)
   ament_target_dependencies(test_tf_forwarding geometry_msgs rclcpp tf2_msgs)
+
+  ament_add_gtest(test_utils test/test_utils.cpp)
+  target_link_libraries(test_utils simple_multi_robot_announcer_component)
+  ament_target_dependencies(test_utils rclcpp)
 endif()
 
 ament_package()

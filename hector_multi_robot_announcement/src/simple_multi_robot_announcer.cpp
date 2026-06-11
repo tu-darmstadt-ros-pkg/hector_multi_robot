@@ -54,10 +54,17 @@ SimpleMultiRobotAnnouncer::SimpleMultiRobotAnnouncer( const rclcpp::NodeOptions 
   declare_parameter<std::string>( "robot_namespace",
                                   ParameterDescriptor().set__read_only( true ).set__description(
                                       "The ROS namespace of the robot." ) );
+  // Optional (default ""): a robot may announce itself without declaring a type.
+  declare_parameter<std::string>(
+      "type", "",
+      ParameterDescriptor().set__read_only( true ).set__description(
+          "The type of robot (e.g. wheeled, tracked, legged, quadcopter, humanoid; custom allowed)." ) );
 
   robot_id_ = get_parameter( "robot_id" ).as_string();
   robot_name_ = get_parameter( "robot_name" ).as_string();
   robot_namespace_ = normalize_namespace( get_parameter( "robot_namespace" ).as_string() );
+  robot_type_ = get_parameter( "type" ).as_string();
+  configuration_ = parse_configuration( get_node_parameters_interface()->get_parameter_overrides() );
 
   setup();
 }
@@ -80,6 +87,11 @@ void SimpleMultiRobotAnnouncer::setup()
   announcement.id = robot_id_;
   announcement.name = robot_name_;
   announcement.ros_namespace = robot_namespace_;
+  announcement.type = robot_type_;
+  for ( const auto &[key, value] : configuration_ ) {
+    announcement.keys.push_back( key );
+    announcement.values.push_back( value );
+  }
   announcement_publisher_->publish( announcement );
   if ( global_announcement_publisher_ )
     global_announcement_publisher_->publish( announcement );

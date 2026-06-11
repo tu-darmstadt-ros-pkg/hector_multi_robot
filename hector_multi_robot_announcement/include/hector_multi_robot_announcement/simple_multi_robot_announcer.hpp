@@ -3,6 +3,8 @@
 
 #include <memory>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <hector_multi_robot_msgs/msg/robot_announcement.hpp>
 #include <hector_multi_robot_msgs/msg/robot_status.hpp>
@@ -28,6 +30,10 @@ private:
   std::string robot_id_;
   std::string robot_name_;
   std::string robot_namespace_;
+  std::string robot_type_;
+
+  //! @brief Robot configuration as ordered string key/value pairs, copied into the announcement.
+  std::vector<std::pair<std::string, std::string>> configuration_;
 
   //! @brief Forwards the robot's namespaced tf tree to the global tf tree (inert unless enabled).
   std::unique_ptr<TfForwarder> tf_forwarder_;

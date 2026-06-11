@@ -50,10 +50,16 @@ All parameters are read-only.
 | robot_id                                   | string   |         | The unique id of the robot.                                                                              |
 | robot_name                                 | string   |         | The human-readable name of the robot.                                                                    |
 | robot_namespace                            | string   |         | The ROS namespace of the robot.                                                                          |
+| type                                       | string   | ""      | Robot type (e.g. `wheeled`, `tracked`, `legged`, `quadcopter`, `humanoid`; custom values allowed).       |
+| configuration.\<key>                       | string   |         | Robot configuration key/value pairs copied into the announcement's `keys`/`values`. Values stringified.  |
 | enable_tf_forwarding                       | bool     | false   | Forward the robot's tf tree to the global tf tree, prefixing frame ids with the robot namespace.         |
 | tf_config.global_frames                    | string[] | []      | Frame ids shared across robots that must not be prefixed when forwarded (e.g. `map`, `world`).           |
 | tf_config.max_rate                         | double   | 30.0    | Max rate (Hz) at which frames without an explicit per-frame rate are forwarded. 0 disables the limit.    |
 | tf_config.frame_configs.\<frame>.rate       | double   |         | Per-frame max forwarding rate (Hz) for child frame `<frame>`. 0 forwards every message.                 |
+
+`configuration.<key>` holds an open-ended map, so its keys are read straight from the parameter
+overrides rather than declared. They therefore do not appear in `ros2 param list` and are read once at
+startup. Provide them as a nested YAML map (`configuration: { main_track: "true", ... }`).
 
 To forward every frame (no shared frames), omit `tf_config.global_frames` entirely. Do **not**
 set it to an empty list (`global_frames: []`): an empty YAML sequence has no element type, so the
