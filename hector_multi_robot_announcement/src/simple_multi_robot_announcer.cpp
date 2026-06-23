@@ -85,7 +85,7 @@ SimpleMultiRobotAnnouncer::SimpleMultiRobotAnnouncer( const rclcpp::NodeOptions 
 
 void SimpleMultiRobotAnnouncer::setup()
 {
-  const rclcpp::QoS announcement_qos = rclcpp::QoS( 1 ).reliable().transient_local();
+  const rclcpp::QoS announcement_qos = latched_qos();
   announcement_publisher_ =
       create_publisher<RobotAnnouncement>( "robot_announcement", announcement_qos );
   if ( get_effective_namespace() != "/" ) {
@@ -131,5 +131,6 @@ void SimpleMultiRobotAnnouncer::setup()
     global_announcement_publisher_->publish( announcement );
 
   tf_forwarder_ = std::make_unique<TfForwarder>( *this, robot_namespace_ );
+  status_reporter_ = std::make_unique<StatusReporter>( *this, robot_id_ );
 }
 } // namespace hector_multi_robot_announcement

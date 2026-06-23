@@ -5,7 +5,6 @@
 #include <map>
 #include <memory>
 #include <mutex>
-#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -26,14 +25,6 @@ namespace hector_multi_robot_announcement
 inline constexpr const char *kFrameConfigPrefix = "tf_config.frame_configs.";
 //! @brief Suffix of the per-frame rate parameter, e.g. "tf_config.frame_configs.<frame>.rate".
 inline constexpr const char *kRateSuffix = ".rate";
-
-//! @brief Reads a numeric parameter value as a double, accepting both integer- and
-//!        double-typed values. Returns std::nullopt for any other type.
-//!
-//! Parameter overrides loaded from YAML are typed by their literal form, so `rate: 5`
-//! becomes an integer and `rate: 5.0` a double. Treating both as a rate avoids crashing
-//! on a perfectly reasonable config.
-std::optional<double> numeric_value_as_double( const rclcpp::ParameterValue &value );
 
 //! @brief Extracts per-frame minimum publish intervals from parameter overrides.
 //!

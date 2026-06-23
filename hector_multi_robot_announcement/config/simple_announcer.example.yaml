@@ -33,6 +33,19 @@
       # viewed from above.
       flipper_links: '["flipper_fl_link", "flipper_fr_link", "flipper_br_link", "flipper_bl_link"]'
 
+    status:
+      # Hz; publishes RobotStatus on `robot_status` (latched). Omit or set 0 to disable status
+      # publishing (also disables battery monitoring and the `set_status` service).
+      status_frequency: 1.0
+      # Hz; publishes Heartbeat on `robot_heartbeat`. Omit or set 0 to disable.
+      heartbeat_frequency: 10.0 # 10 Hz are about 160 B/s bandwidth
+      battery:
+        # Aggregation for RobotStatus.battery_level: "minimum" (lowest battery level), or "combined" (pooled batteries)
+        aggregation: "minimum"
+        state_topics: # Topics publishing sensor_msgs/msg/BatteryState
+          left: "battery_left"
+          right: "battery_right"
+
     enable_tf_forwarding: true
     tf_config:
       max_rate: 30.0 # Max rate for all frames not listed below (Hz)

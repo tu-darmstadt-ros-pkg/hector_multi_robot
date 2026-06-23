@@ -10,6 +10,7 @@
 #include <hector_multi_robot_msgs/msg/robot_status.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include "hector_multi_robot_announcement/status_reporter.hpp"
 #include "hector_multi_robot_announcement/tf_forwarding.hpp"
 
 namespace hector_multi_robot_announcement
@@ -37,6 +38,9 @@ private:
 
   //! @brief Forwards the robot's namespaced tf tree to the global tf tree (inert unless enabled).
   std::unique_ptr<TfForwarder> tf_forwarder_;
+
+  //! @brief Publishes RobotStatus + Heartbeat and aggregates battery state (inert unless enabled).
+  std::unique_ptr<StatusReporter> status_reporter_;
 };
 
 } // namespace hector_multi_robot_announcement

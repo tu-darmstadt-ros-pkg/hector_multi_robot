@@ -15,12 +15,14 @@ find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(hector_multi_robot_msgs REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
 
 
 add_library(simple_multi_robot_announcer_component SHARED
   src/simple_multi_robot_announcer.cpp
+  src/status_reporter.cpp
   src/tf_forwarding.cpp
 )
 
@@ -39,6 +41,7 @@ ament_target_dependencies(simple_multi_robot_announcer_component
   rclcpp
   hector_multi_robot_msgs
   rclcpp_components
+  sensor_msgs
   tf2_msgs
   tf2_ros
 )
@@ -62,6 +65,10 @@ if(BUILD_TESTING)
   ament_add_gtest(test_utils test/test_utils.cpp)
   target_link_libraries(test_utils simple_multi_robot_announcer_component)
   ament_target_dependencies(test_utils rclcpp)
+
+  ament_add_gtest(test_status_reporter test/test_status_reporter.cpp)
+  target_link_libraries(test_status_reporter simple_multi_robot_announcer_component)
+  ament_target_dependencies(test_status_reporter rclcpp sensor_msgs hector_multi_robot_msgs)
 endif()
 
 ament_package()

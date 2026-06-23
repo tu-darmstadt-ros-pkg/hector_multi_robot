@@ -2,14 +2,56 @@
 #define HECTOR_MULTI_ROBOT_ANNOUNCEMENT_UTILS_HPP
 
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include <rcl_interfaces/msg/parameter_descriptor.hpp>
+#include <rclcpp/node.hpp>
 #include <rclcpp/parameter_value.hpp>
+#include <rclcpp/qos.hpp>
 
 namespace hector_multi_robot_announcement
 {
+
+//! @brief QoS for latched state topics: keep-last depth 1, reliable, transient_local, so a
+//!        late-joining subscriber immediately receives the most recent sample.
+inline rclcpp::QoS latched_qos() { return rclcpp::QoS( 1 ).reliable().transient_local(); }
+
+//! @brief Reads a numeric parameter value as a double, accepting both integer- and
+//!        double-typed values. Returns std::nullopt for any other type.
+//!
+//! Parameter overrides loaded from YAML are typed by their literal form, so `rate: 5`
+//! becomes an integer and `rate: 5.0` a double. Treating both as a rate avoids crashing
+//! on a perfectly reasonable config.
+inline std::optional<double> numeric_value_as_double( const rclcpp::ParameterValue &value )
+{
+  switch ( value.get_type() ) {
+  case rclcpp::ParameterType::PARAMETER_DOUBLE:
+    return value.get<double>();
+  case rclcpp::ParameterType::PARAMETER_INTEGER:
+    return static_cast<double>( value.get<int64_t>() );
+  default:
+    return std::nullopt;
+  }
+}
+
+//! @brief Declares parameter `name` with `descriptor`, preserving an override's literal type so an
+//!        integer YAML literal (e.g. `30`) does not fail a double declaration; falls back to
+//!        `default_value` (a double) when there is no override. Resolve the declared value through
+//!        numeric_value_as_double, which accepts both integer- and double-typed parameters.
+inline void declare_param_preserving_override_type(
+    rclcpp::Node &node, const std::string &name, double default_value,
+    const rcl_interfaces::msg::ParameterDescriptor &descriptor )
+{
+  const auto &overrides = node.get_node_parameters_interface()->get_parameter_overrides();
+  const auto override_it = overrides.find( name );
+  if ( override_it != overrides.end() )
+    node.declare_parameter( name, override_it->second, descriptor );
+  else
+    node.declare_parameter<double>( name, default_value, descriptor );
+}
 
 //! @brief Normalizes a ROS namespace to its canonical absolute form: a single leading slash,
 //!        no repeated slashes, and no trailing slash (root stays "/"). Empty input maps to "/".

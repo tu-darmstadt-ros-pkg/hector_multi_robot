@@ -1,0 +1,4 @@
+# See RobotStatus message for codes
+uint8 status_code
+string status_message
+---

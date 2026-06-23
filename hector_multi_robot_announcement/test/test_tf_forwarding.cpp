@@ -4,6 +4,7 @@
 #include <thread>
 
 #include "hector_multi_robot_announcement/tf_forwarding.hpp"
+#include "hector_multi_robot_announcement/utils.hpp"
 
 using hector_multi_robot_announcement::FrameRateLimiter;
 using hector_multi_robot_announcement::numeric_value_as_double;

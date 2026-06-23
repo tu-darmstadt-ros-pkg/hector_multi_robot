@@ -1,6 +1,7 @@
 #include "hector_multi_robot_announcement/tf_forwarding.hpp"
 
 #include <functional>
+#include <optional>
 #include <sstream>
 #include <utility>
 
@@ -36,18 +37,6 @@ std::optional<std::string> frame_from_rate_key( const std::string &name )
   return frame;
 }
 } // namespace
-
-std::optional<double> numeric_value_as_double( const rclcpp::ParameterValue &value )
-{
-  switch ( value.get_type() ) {
-  case rclcpp::ParameterType::PARAMETER_DOUBLE:
-    return value.get<double>();
-  case rclcpp::ParameterType::PARAMETER_INTEGER:
-    return static_cast<double>( value.get<int64_t>() );
-  default:
-    return std::nullopt;
-  }
-}
 
 std::unordered_map<std::string, rclcpp::Duration>
 parse_frame_intervals( const std::map<std::string, rclcpp::ParameterValue> &overrides )
@@ -162,15 +151,7 @@ TfForwarder::TfForwarder( rclcpp::Node &node, const std::string &robot_namespace
       ParameterDescriptor().set__read_only( true ).set__description(
           "Maximum rate in Hz at which transforms without an explicit "
           "tf_config.frame_configs.<frame>.rate parameter are forwarded to the global tf tree." );
-  const auto &overrides = node_.get_node_parameters_interface()->get_parameter_overrides();
-  const auto max_rate_override = overrides.find( "tf_config.max_rate" );
-  if ( max_rate_override != overrides.end() ) {
-    // Preserve the override's original type so integer YAML literals (`max_rate: 30`) do not
-    // fail declaration; load_config() resolves integers and doubles through numeric_value_as_double.
-    node_.declare_parameter( "tf_config.max_rate", max_rate_override->second, max_rate_descriptor );
-  } else {
-    node_.declare_parameter<double>( "tf_config.max_rate", 30.0, max_rate_descriptor );
-  }
+  declare_param_preserving_override_type( node_, "tf_config.max_rate", 30.0, max_rate_descriptor );
 
   // Canonicalize before building topic names: a trailing or repeated slash (e.g. "/robot1/")
   // would otherwise yield an invalid "/robot1//tf" and make create_subscription throw.
