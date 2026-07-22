@@ -24,6 +24,7 @@ add_library(simple_multi_robot_announcer_component SHARED
   src/simple_multi_robot_announcer.cpp
   src/status_reporter.cpp
   src/tf_forwarding.cpp
+  src/visualization_config.cpp
 )
 
 rclcpp_components_register_node(simple_multi_robot_announcer_component
@@ -69,6 +70,10 @@ if(BUILD_TESTING)
   ament_add_gtest(test_status_reporter test/test_status_reporter.cpp)
   target_link_libraries(test_status_reporter simple_multi_robot_announcer_component)
   ament_target_dependencies(test_status_reporter rclcpp sensor_msgs hector_multi_robot_msgs)
+
+  ament_add_gtest(test_visualization_config test/test_visualization_config.cpp)
+  target_link_libraries(test_visualization_config simple_multi_robot_announcer_component)
+  ament_target_dependencies(test_visualization_config rclcpp hector_multi_robot_msgs)
 endif()
 
 ament_package()

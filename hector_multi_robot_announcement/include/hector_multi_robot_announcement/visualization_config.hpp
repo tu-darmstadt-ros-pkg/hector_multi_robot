@@ -1,0 +1,39 @@
+#ifndef HECTOR_MULTI_ROBOT_ANNOUNCEMENT_VISUALIZATION_CONFIG_HPP
+#define HECTOR_MULTI_ROBOT_ANNOUNCEMENT_VISUALIZATION_CONFIG_HPP
+
+#include <map>
+#include <string>
+#include <vector>
+
+#include <hector_multi_robot_msgs/msg/visualization.hpp>
+#include <rclcpp/logger.hpp>
+#include <rclcpp/parameter_value.hpp>
+
+namespace hector_multi_robot_announcement
+{
+
+//! @brief Parameter name prefix that identifies a visualization configuration block.
+inline constexpr const char *kVisualizationPrefix = "visualizations.";
+//! @brief Field name (under a visualization id) that holds the display hint key/value map.
+inline constexpr const char *kVisualizationHintsField = "hints.";
+
+//! @brief Builds the announced Visualization list from parameter overrides of the form
+//!        "visualizations.<id>.<field>".
+//!
+//! Like `configuration` and the per-frame tf rates, the visualization block is an open-ended YAML
+//! map whose keys are unknown at compile time, so it is read straight from the overrides rather
+//! than declared as parameters. Each `<id>` becomes one Visualization; recognized fields are
+//! `name`, `topic`, `message_type`, `kind`, `group`, `default_visibility` and the nested
+//! `hints.<key>` map (mapped to parallel `keys`/`values`). `name` defaults to `<id>` when absent or
+//! empty. An entry without a non-empty `topic` is skipped with a warning. Scalar values are
+//! stringified via rclcpp::to_string so unquoted YAML scalars are accepted; `default_visibility`
+//! reads one of the strings `hidden`, `when_active` or `always` (mapped to the message's
+//! DEFAULT_VISIBILITY_* constants) and warns (defaulting to hidden) on any other value or type.
+//! Entries and their hints are returned in the overrides map's sorted key order.
+std::vector<hector_multi_robot_msgs::msg::Visualization>
+parse_visualizations( const std::map<std::string, rclcpp::ParameterValue> &overrides,
+                      const rclcpp::Logger &logger );
+
+} // namespace hector_multi_robot_announcement
+
+#endif // HECTOR_MULTI_ROBOT_ANNOUNCEMENT_VISUALIZATION_CONFIG_HPP

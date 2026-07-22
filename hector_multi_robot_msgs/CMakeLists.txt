@@ -10,6 +10,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   msg/Heartbeat.msg
   msg/RobotAnnouncement.msg
   msg/RobotStatus.msg
+  msg/Visualization.msg
   srv/SetStatus.srv
   DEPENDENCIES sensor_msgs std_msgs
 )

@@ -12,3 +12,6 @@ string type
 # ("flipper_links", '["flipper_fr_link", "flipper_fl_link", "flipper_bl_link", "flipper_br_link"]') as a JSON array
 string[] keys
 string[] values
+
+# Topics a UI (e.g. rviz) can visualize for this robot.
+Visualization[] visualizations

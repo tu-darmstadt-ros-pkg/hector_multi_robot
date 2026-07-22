@@ -9,6 +9,7 @@
 #include <rclcpp_components/register_node_macro.hpp>
 
 #include "hector_multi_robot_announcement/utils.hpp"
+#include "hector_multi_robot_announcement/visualization_config.hpp"
 
 RCLCPP_COMPONENTS_REGISTER_NODE( hector_multi_robot_announcement::SimpleMultiRobotAnnouncer )
 
@@ -42,8 +43,8 @@ rclcpp::NodeOptions bypass_global_tf_remap( const rclcpp::NodeOptions &options )
   return opts;
 }
 
-//! @brief Maximum number of configuration entries logged on startup.
-constexpr size_t kMaxLoggedConfigKeys = 10;
+//! @brief Maximum number of list entries logged before truncating list.
+constexpr size_t kMaxLoggedEntries = 10;
 //! @brief Maximum length of a configuration value in the startup log; longer values are
 //!        truncated with a trailing ellipsis so the total stays within the limit.
 constexpr size_t kMaxLoggedValueLength = 40;
@@ -78,7 +79,9 @@ SimpleMultiRobotAnnouncer::SimpleMultiRobotAnnouncer( const rclcpp::NodeOptions 
   robot_name_ = get_parameter( "robot_name" ).as_string();
   robot_namespace_ = normalize_namespace( get_parameter( "robot_namespace" ).as_string() );
   robot_type_ = get_parameter( "type" ).as_string();
-  configuration_ = parse_configuration( get_node_parameters_interface()->get_parameter_overrides() );
+  const auto &overrides = get_node_parameters_interface()->get_parameter_overrides();
+  configuration_ = parse_configuration( overrides );
+  visualizations_ = parse_visualizations( overrides, get_logger() );
 
   setup();
 }
@@ -106,14 +109,30 @@ void SimpleMultiRobotAnnouncer::setup()
     config_log << "Configuration (" << configuration_.size() << " keys):";
     size_t logged = 0;
     for ( const auto &[key, value] : configuration_ ) {
-      if ( logged++ >= kMaxLoggedConfigKeys )
+      if ( logged++ >= kMaxLoggedEntries )
         break;
       config_log << "\n  " << key << ": " << truncate_for_log( value );
     }
-    if ( configuration_.size() > kMaxLoggedConfigKeys )
-      config_log << "\n  ... and " << ( configuration_.size() - kMaxLoggedConfigKeys )
+    if ( configuration_.size() > kMaxLoggedEntries )
+      config_log << "\n  ... and " << ( configuration_.size() - kMaxLoggedEntries )
                  << " more";
     RCLCPP_INFO_STREAM( get_logger(), config_log.str() );
+  }
+
+  if ( visualizations_.empty() ) {
+    RCLCPP_INFO( get_logger(), "No visualizations." );
+  } else {
+    std::ostringstream vis_log;
+    vis_log << "Visualizations (" << visualizations_.size() << "):";
+    size_t logged = 0;
+    for ( const auto &visualization : visualizations_ ) {
+      if ( logged++ >= kMaxLoggedEntries )
+        break;
+      vis_log << "\n  " << visualization.name << " (" << visualization.topic << ")";
+    }
+    if ( visualizations_.size() > kMaxLoggedEntries )
+      vis_log << "\n  ... and " << ( visualizations_.size() - kMaxLoggedEntries ) << " more";
+    RCLCPP_INFO_STREAM( get_logger(), vis_log.str() );
   }
 
   RobotAnnouncement announcement;
@@ -126,6 +145,7 @@ void SimpleMultiRobotAnnouncer::setup()
     announcement.keys.push_back( key );
     announcement.values.push_back( value );
   }
+  announcement.visualizations = visualizations_;
   announcement_publisher_->publish( announcement );
   if ( global_announcement_publisher_ )
     global_announcement_publisher_->publish( announcement );

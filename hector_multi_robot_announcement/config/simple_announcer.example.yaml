@@ -33,6 +33,35 @@
       # viewed from above.
       flipper_links: '["flipper_fl_link", "flipper_fr_link", "flipper_br_link", "flipper_bl_link"]'
 
+    # Topics a UI (e.g. rviz) can auto-add as displays for this robot. Each map key is the
+    # visualization id and doubles as the `name` fallback. Only `topic` is required; an entry
+    # without it is skipped.
+    # `default_visibility` is one of :
+    #   * `hidden` (off until the user enables it, the default)
+    #   * `when_active` (shown while this robot is active/selected in the UI) or
+    #   * `always` (shown regardless of which robot is active).
+    # Nested `hints` become the message's `keys`/`values` display hint store.
+    visualizations:
+      elevation_map:
+        name: "Map Bag"
+        topic: "map_bag" # relative to ros_namespace; absolute (/...) allowed
+        message_type: "map_bag_msgs/msg/MapBag"
+        kind: "map"
+        group: "Mapping"
+        default_visibility: "when_active"
+        hints:
+          colormap: "turbo"
+      planned_path:
+        name: "Planned Path"
+        topic: "move_base/plan"
+        message_type: "nav_msgs/msg/Path"
+        kind: "path"
+        group: "Navigation"
+        default_visibility: "always"
+        hints:
+          color: "#e91e63"
+          line_width: "0.05"
+
     status:
       # Hz; publishes RobotStatus on `robot_status` (latched). Omit or set 0 to disable status
       # publishing (also disables battery monitoring and the `set_status` service).
