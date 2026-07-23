@@ -56,14 +56,6 @@ parse_frame_intervals( const std::map<std::string, rclcpp::ParameterValue> &over
   return result;
 }
 
-std::string prefix_frame_id( const std::string &frame, const std::string &prefix,
-                             const std::unordered_set<std::string> &global_frames )
-{
-  if ( frame.empty() || global_frames.count( frame ) > 0 )
-    return frame;
-  return prefix + frame;
-}
-
 geometry_msgs::msg::TransformStamped
 prefix_transform( geometry_msgs::msg::TransformStamped transform, const std::string &prefix,
                   const std::unordered_set<std::string> &global_frames )

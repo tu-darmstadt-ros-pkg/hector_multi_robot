@@ -15,6 +15,7 @@ find_package(geometry_msgs REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(hector_multi_robot_msgs REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(ros_babel_fish REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(tf2_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
@@ -24,6 +25,7 @@ add_library(simple_multi_robot_announcer_component SHARED
   src/simple_multi_robot_announcer.cpp
   src/status_reporter.cpp
   src/tf_forwarding.cpp
+  src/topic_forwarding.cpp
   src/visualization_config.cpp
 )
 
@@ -42,6 +44,7 @@ ament_target_dependencies(simple_multi_robot_announcer_component
   rclcpp
   hector_multi_robot_msgs
   rclcpp_components
+  ros_babel_fish
   sensor_msgs
   tf2_msgs
   tf2_ros
@@ -62,6 +65,10 @@ if(BUILD_TESTING)
   ament_add_gtest(test_tf_forwarding test/test_tf_forwarding.cpp)
   target_link_libraries(test_tf_forwarding simple_multi_robot_announcer_component)
   ament_target_dependencies(test_tf_forwarding geometry_msgs rclcpp tf2_msgs)
+
+  ament_add_gtest(test_topic_forwarding test/test_topic_forwarding.cpp)
+  target_link_libraries(test_topic_forwarding simple_multi_robot_announcer_component)
+  ament_target_dependencies(test_topic_forwarding geometry_msgs rclcpp ros_babel_fish)
 
   ament_add_gtest(test_utils test/test_utils.cpp)
   target_link_libraries(test_utils simple_multi_robot_announcer_component)

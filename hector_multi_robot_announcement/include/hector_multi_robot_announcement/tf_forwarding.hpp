@@ -34,12 +34,8 @@ inline constexpr const char *kRateSuffix = ".rate";
 std::unordered_map<std::string, rclcpp::Duration>
 parse_frame_intervals( const std::map<std::string, rclcpp::ParameterValue> &overrides );
 
-//! @brief Prepends `prefix` to `frame` unless `frame` is empty or listed in `global_frames`.
-std::string prefix_frame_id( const std::string &frame, const std::string &prefix,
-                             const std::unordered_set<std::string> &global_frames );
-
 //! @brief Returns a copy of `transform` with both its parent and child frame ids prefixed
-//!        via prefix_frame_id().
+//!        via prefix_frame_id() (declared in utils.hpp).
 geometry_msgs::msg::TransformStamped
 prefix_transform( geometry_msgs::msg::TransformStamped transform, const std::string &prefix,
                   const std::unordered_set<std::string> &global_frames );

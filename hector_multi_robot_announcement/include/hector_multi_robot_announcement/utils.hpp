@@ -4,6 +4,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -69,6 +70,45 @@ inline std::string normalize_namespace( const std::string &ros_namespace )
   if ( result.size() > 1 && result.back() == '/' )
     result.pop_back(); // drop trailing slash (root stays "/")
   return result;
+}
+
+//! @brief Prepends `prefix` to `frame` unless `frame` is empty or listed in `global_frames`.
+//!
+//! Shared by tf forwarding (prefix_transform) and topic forwarding (prefix_frame_ids); it is a
+//! pure string helper with no ROS dependencies, so it lives here next to normalize_namespace.
+inline std::string prefix_frame_id( const std::string &frame, const std::string &prefix,
+                                    const std::unordered_set<std::string> &global_frames )
+{
+  if ( frame.empty() || global_frames.count( frame ) > 0 )
+    return frame;
+  return prefix + frame;
+}
+
+//! @brief Iterates parameter overrides of the form "<prefix><id>.<field>", invoking
+//!        `apply(id, field, value)` for each match.
+//!
+//! Shared scaffold for the open-ended `<id>`-keyed override maps (visualizations, forwarded
+//! topics). Keys outside `prefix`, the bare "<prefix><id>" scalar (no field), and empty id/field
+//! segments are skipped. The overrides map is sorted, so a given id's fields arrive contiguously
+//! and ids are visited in sorted order.
+template<typename Fn>
+void for_each_override_id_field( const std::map<std::string, rclcpp::ParameterValue> &overrides,
+                                 const char *prefix, Fn &&apply )
+{
+  const std::size_t prefix_length = std::char_traits<char>::length( prefix );
+  for ( const auto &[name, value] : overrides ) {
+    if ( name.rfind( prefix, 0 ) != 0 )
+      continue;
+    const std::string rest = name.substr( prefix_length );
+    const std::size_t dot = rest.find( '.' );
+    if ( dot == std::string::npos )
+      continue; // "<prefix><id>" scalar has no field; nothing to populate.
+    const std::string id = rest.substr( 0, dot );
+    const std::string field = rest.substr( dot + 1 );
+    if ( id.empty() || field.empty() )
+      continue;
+    apply( id, field, value );
+  }
 }
 
 //! @brief Extracts string key/value pairs from parameter overrides of the form

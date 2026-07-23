@@ -5,6 +5,8 @@
 
 #include <rclcpp/logging.hpp>
 
+#include "hector_multi_robot_announcement/utils.hpp"
+
 namespace hector_multi_robot_announcement
 {
 
@@ -64,24 +66,14 @@ std::vector<Visualization>
 parse_visualizations( const std::map<std::string, rclcpp::ParameterValue> &overrides,
                       const rclcpp::Logger &logger )
 {
-  const std::size_t prefix_length = std::char_traits<char>::length( kVisualizationPrefix );
-
   // Accumulate by id. The overrides map is sorted, so all keys of one id are contiguous, ids come
   // out sorted, and hint keys accumulate in sorted order, keeping keys/values aligned.
   std::map<std::string, Visualization> by_id;
-  for ( const auto &[name, value] : overrides ) {
-    if ( name.rfind( kVisualizationPrefix, 0 ) != 0 )
-      continue;
-    const std::string rest = name.substr( prefix_length );
-    const std::size_t dot = rest.find( '.' );
-    if ( dot == std::string::npos )
-      continue; // "visualizations.<id>" scalar has no field; nothing to populate.
-    const std::string id = rest.substr( 0, dot );
-    const std::string field = rest.substr( dot + 1 );
-    if ( id.empty() || field.empty() )
-      continue;
-    apply_field( by_id[id], id, field, value, logger );
-  }
+  for_each_override_id_field(
+      overrides, kVisualizationPrefix,
+      [&]( const std::string &id, const std::string &field, const rclcpp::ParameterValue &value ) {
+        apply_field( by_id[id], id, field, value, logger );
+      } );
 
   std::vector<Visualization> result;
   for ( auto &[id, vis] : by_id ) {

@@ -151,6 +151,7 @@ void SimpleMultiRobotAnnouncer::setup()
     global_announcement_publisher_->publish( announcement );
 
   tf_forwarder_ = std::make_unique<TfForwarder>( *this, robot_namespace_ );
+  topic_forwarder_ = std::make_unique<TopicForwarder>( *this, robot_namespace_ );
   status_reporter_ = std::make_unique<StatusReporter>( *this, robot_id_ );
 }
 } // namespace hector_multi_robot_announcement
