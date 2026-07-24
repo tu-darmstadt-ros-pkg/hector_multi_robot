@@ -60,6 +60,13 @@ All parameters are read-only.
 | visualizations.\<id>.group                 | string   | ""        | Optional UI grouping label, e.g. `Mapping`, `Navigation`.                                                                  |
 | visualizations.\<id>.default_visibility    | string   | "hidden"  | Default visibility: `hidden` (off until enabled), `when_active` (shown while this robot is active/selected) or `always`.   |
 | visualizations.\<id>.hints.\<key>          | string   |           | Display hints copied into the visualization's `keys`/`values`, e.g. `colormap: turbo`. Values stringified.                 |
+| sensors.\<id>.topic                        | string   |           | Topic the sensor value is read from (required; entry skipped if missing/empty). Resolves against the namespace.            |
+| sensors.\<id>.name                         | string   | \<id>     | Human-readable display name. Defaults to `<id>` when absent or empty.                                                      |
+| sensors.\<id>.message_type                 | string   | ""        | Message type, e.g. `std_msgs/msg/Float64`. Empty lets the consumer resolve it from the ROS graph.                          |
+| sensors.\<id>.field                        | string   | ""        | Message member to display, dotted for nested access (e.g. `data`, `status.mode.name`).                                     |
+| sensors.\<id>.unit                         | string   | ""        | Display unit, e.g. `ppm`, `μSv/h`.                                                                                         |
+| sensors.\<id>.icon                         | string   | ""        | Symbolic icon name a UI maps to its icon set, e.g. `co2`.                                                                  |
+| sensors.\<id>.hints.\<key>                 | string   |           | Display/threshold hints copied into the sensor's `keys`/`values` (e.g. `warn_above`, `decimals`, `timeout`). Stringified.  |
 | status.status_frequency                    | double   | 0.0       | Publish `RobotStatus` on `robot_status` at this rate (Hz). 0 disables status, battery monitoring and `set_status`.         |
 | status.heartbeat_frequency                 | double   | 0.0       | Publish `Heartbeat` on `robot_heartbeat` at this rate (Hz). 0 disables the heartbeat.                                      |
 | status.battery.aggregation                 | string   | "minimum" | Aggregation for `battery_level`: `minimum` (worst pack) or `combined` (capacity-weighted pooled level).                    |
@@ -81,6 +88,14 @@ startup. Provide them as a nested YAML map (`configuration: { main_track: "true"
 announcement's `visualizations` array. `topic` is required; an entry without a non-empty `topic` is
 skipped with a warning. `name` falls back to `<id>`. Per-`<id>` `hints.<key>` become the
 visualization message's parallel `keys`/`values`.
+
+`sensors` is an open-ended map read the same way (not declared, read once at startup). Each `<id>`
+describes one sensor value a UI can display and is copied into the announcement's `sensors` array;
+the `<id>` is used verbatim as the message `id`. `topic` is required; an entry without a non-empty
+`topic` is skipped with a warning. `name` falls back to `<id>`, and `field` selects the message member
+to display (dotted for nested access). Per-`<id>` `hints.<key>` become the sensor message's parallel
+`keys`/`values` (display/threshold tuning the consumer interprets). The announcer only carries these
+declarations; it does not subscribe to the sensor topics or read their values.
 
 With tf forwarding, forwarded frames are prefixed on the global `/tf` (e.g. `robot1/odom`), but
 visualization messages keep their original, un-prefixed `frame_id`s. Visualization topics consumed

@@ -15,3 +15,6 @@ string[] values
 
 # Topics a UI (e.g. rviz) can visualize for this robot.
 Visualization[] visualizations
+
+# Sensor values a UI can display for this robot.
+Sensor[] sensors

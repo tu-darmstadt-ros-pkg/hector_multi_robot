@@ -65,6 +65,36 @@
           color: "#e91e63"
           line_width: "0.05"
 
+    # Sensor values a UI can display for this robot. Each map key is the sensor id (copied verbatim
+    # into the message `id`) and doubles as the `name` fallback. Only `topic` is required; an entry
+    # without it is skipped. `field` selects the message member to display (dotted for nested access).
+    # Nested `hints` become the message's `keys`/`values` display/threshold hint store; the keys below
+    # are conventions consumers understand (decimals, timeout, warn_above/below, danger_above/below,
+    # warn_topic), but any custom key is allowed.
+    sensors:
+      co2:
+        name: "CO2"
+        topic: "co2" # relative to ros_namespace; absolute (/...) allowed
+        message_type: "std_msgs/msg/Float64"
+        field: "data"
+        unit: "ppm"
+        icon: "co2"
+        hints:
+          decimals: "0"
+          warn_above: "1000"
+          danger_above: "2000"
+      radiation:
+        name: "Radiation"
+        topic: "radiation"
+        message_type: "std_msgs/msg/Float64"
+        field: "data"
+        unit: "μSv/h"
+        icon: "radioactive"
+        hints:
+          decimals: "2"
+          timeout: "5.0"
+          warn_topic: "radiation_detected"
+
     status:
       # Hz; publishes RobotStatus on `robot_status` (latched). Omit or set 0 to disable status
       # publishing (also disables battery monitoring and the `set_status` service).
@@ -72,7 +102,8 @@
       # Hz; publishes Heartbeat on `robot_heartbeat`. Omit or set 0 to disable.
       heartbeat_frequency: 10.0 # 10 Hz are about 160 B/s bandwidth
       battery:
-        # Aggregation for RobotStatus.battery_level: "minimum" (lowest battery level), or "combined" (pooled batteries)
+        # Aggregation for RobotStatus.battery_level:
+        # "minimum" (lowest battery level), or "combined" (pooled batteries)
         aggregation: "minimum"
         state_topics: # Topics publishing sensor_msgs/msg/BatteryState
           left: "battery_left"

@@ -8,6 +8,7 @@
 
 #include <hector_multi_robot_msgs/msg/robot_announcement.hpp>
 #include <hector_multi_robot_msgs/msg/robot_status.hpp>
+#include <hector_multi_robot_msgs/msg/sensor.hpp>
 #include <hector_multi_robot_msgs/msg/visualization.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -27,6 +28,10 @@ private:
   //! @brief Sets up subscribers, publishers, etc. to configure the node
   void setup();
 
+  //! @brief Builds a RobotAnnouncement from the current members and publishes it on the namespaced
+  //!        publisher and, when it exists, the global one.
+  void publish_announcement();
+
   rclcpp::Publisher<hector_multi_robot_msgs::msg::RobotAnnouncement>::SharedPtr announcement_publisher_;
   rclcpp::Publisher<hector_multi_robot_msgs::msg::RobotAnnouncement>::SharedPtr global_announcement_publisher_;
 
@@ -40,6 +45,9 @@ private:
 
   //! @brief Visualization topic descriptions copied into the announcement (for UI/rviz consumers).
   std::vector<hector_multi_robot_msgs::msg::Visualization> visualizations_;
+
+  //! @brief Sensor value descriptions copied into the announcement (for UI consumers).
+  std::vector<hector_multi_robot_msgs::msg::Sensor> sensors_;
 
   //! @brief Forwards the robot's namespaced tf tree to the global tf tree (inert unless enabled).
   std::unique_ptr<TfForwarder> tf_forwarder_;

@@ -8,6 +8,7 @@
 
 #include <rclcpp_components/register_node_macro.hpp>
 
+#include "hector_multi_robot_announcement/sensor_config.hpp"
 #include "hector_multi_robot_announcement/utils.hpp"
 #include "hector_multi_robot_announcement/visualization_config.hpp"
 
@@ -82,6 +83,7 @@ SimpleMultiRobotAnnouncer::SimpleMultiRobotAnnouncer( const rclcpp::NodeOptions 
   const auto &overrides = get_node_parameters_interface()->get_parameter_overrides();
   configuration_ = parse_configuration( overrides );
   visualizations_ = parse_visualizations( overrides, get_logger() );
+  sensors_ = parse_sensors( overrides, get_logger() );
 
   setup();
 }
@@ -135,6 +137,31 @@ void SimpleMultiRobotAnnouncer::setup()
     RCLCPP_INFO_STREAM( get_logger(), vis_log.str() );
   }
 
+  if ( sensors_.empty() ) {
+    RCLCPP_INFO( get_logger(), "No sensors." );
+  } else {
+    std::ostringstream sensor_log;
+    sensor_log << "Sensors (" << sensors_.size() << "):";
+    size_t logged = 0;
+    for ( const auto &sensor : sensors_ ) {
+      if ( logged++ >= kMaxLoggedEntries )
+        break;
+      sensor_log << "\n  " << sensor.name << " (" << sensor.topic << ")";
+    }
+    if ( sensors_.size() > kMaxLoggedEntries )
+      sensor_log << "\n  ... and " << ( sensors_.size() - kMaxLoggedEntries ) << " more";
+    RCLCPP_INFO_STREAM( get_logger(), sensor_log.str() );
+  }
+
+  publish_announcement();
+
+  tf_forwarder_ = std::make_unique<TfForwarder>( *this, robot_namespace_ );
+  topic_forwarder_ = std::make_unique<TopicForwarder>( *this, robot_namespace_ );
+  status_reporter_ = std::make_unique<StatusReporter>( *this, robot_id_ );
+}
+
+void SimpleMultiRobotAnnouncer::publish_announcement()
+{
   RobotAnnouncement announcement;
   announcement.header.stamp = now();
   announcement.id = robot_id_;
@@ -146,12 +173,9 @@ void SimpleMultiRobotAnnouncer::setup()
     announcement.values.push_back( value );
   }
   announcement.visualizations = visualizations_;
+  announcement.sensors = sensors_;
   announcement_publisher_->publish( announcement );
   if ( global_announcement_publisher_ )
     global_announcement_publisher_->publish( announcement );
-
-  tf_forwarder_ = std::make_unique<TfForwarder>( *this, robot_namespace_ );
-  topic_forwarder_ = std::make_unique<TopicForwarder>( *this, robot_namespace_ );
-  status_reporter_ = std::make_unique<StatusReporter>( *this, robot_id_ );
 }
 } // namespace hector_multi_robot_announcement
