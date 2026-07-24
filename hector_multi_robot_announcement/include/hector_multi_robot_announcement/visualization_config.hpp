@@ -25,7 +25,9 @@ inline constexpr const char *kVisualizationHintsField = "hints.";
 //! than declared as parameters. Each `<id>` becomes one Visualization; recognized fields are
 //! `name`, `topic`, `message_type`, `kind`, `group`, `default_visibility` and the nested
 //! `hints.<key>` map (mapped to parallel `keys`/`values`). `name` defaults to `<id>` when absent or
-//! empty. An entry without a non-empty `topic` is skipped with a warning. Scalar values are
+//! empty and must be unique across entries: a later entry reusing an earlier one's name is skipped
+//! with a warning (the first id in sorted order keeps the name). An entry without a non-empty
+//! `topic` is skipped with a warning. Scalar values are
 //! stringified via rclcpp::to_string so unquoted YAML scalars are accepted; `default_visibility`
 //! reads one of the strings `hidden`, `when_active` or `always` (mapped to the message's
 //! DEFAULT_VISIBILITY_* constants) and warns (defaulting to hidden) on any other value or type.

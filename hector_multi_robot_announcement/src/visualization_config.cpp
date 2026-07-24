@@ -1,6 +1,7 @@
 #include "hector_multi_robot_announcement/visualization_config.hpp"
 
 #include <map>
+#include <set>
 #include <string>
 
 #include <rclcpp/logging.hpp>
@@ -76,11 +77,21 @@ parse_visualizations( const std::map<std::string, rclcpp::ParameterValue> &overr
       } );
 
   std::vector<Visualization> result;
+  std::set<std::string> seen_names;
   for ( auto &[id, vis] : by_id ) {
     if ( vis.name.empty() )
       vis.name = id; // Fall back to the map key as the human-readable name.
     if ( vis.topic.empty() ) {
       RCLCPP_WARN( logger, "Skipping visualization '%s': no 'topic' configured.", id.c_str() );
+      continue;
+    }
+    // Names identify a visualization to the consumer, so drop later collisions; the first id in
+    // sorted order keeps the name.
+    if ( !seen_names.insert( vis.name ).second ) {
+      RCLCPP_WARN( logger,
+                   "Skipping visualization '%s': name '%s' already used by another visualization; "
+                   "names must be unique.",
+                   id.c_str(), vis.name.c_str() );
       continue;
     }
     result.push_back( std::move( vis ) );

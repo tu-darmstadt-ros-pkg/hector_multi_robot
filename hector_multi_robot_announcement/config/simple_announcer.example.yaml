@@ -46,7 +46,7 @@
     # Nested `hints` become the message's `keys`/`values` display hint store.
     visualizations:
       elevation_map:
-        name: "Map Bag"
+        name: "Map Bag" # Must be unique across visualizations for this robot.
         topic: "map_bag" # relative to ros_namespace; absolute (/...) allowed
         message_type: "map_bag_msgs/msg/MapBag"
         kind: "map"

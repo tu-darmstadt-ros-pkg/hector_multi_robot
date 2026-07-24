@@ -1,6 +1,6 @@
 # Describes a topic a UI (e.g. rviz) can visualize for this robot.
 
-string name           # Human-readable, e.g. "Elevation Map"
+string name           # Human-readable, e.g. "Elevation Map" (must be unique in announcement)
 string topic          # Relative names resolve against ros_namespace, absolute allowed
 string message_type   # e.g. "sensor_msgs/msg/PointCloud2". May be empty; then the
                       # consumer must resolve it from the ROS graph once the topic exists.

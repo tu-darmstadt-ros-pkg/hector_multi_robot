@@ -98,6 +98,42 @@ TEST( ParseVisualizations, SkipsEntryWithoutTopic )
   EXPECT_EQ( result.front().name, "valid" );
 }
 
+// Two entries resolving to the same name keep only the first in sorted id order; the duplicate is
+// dropped.
+TEST( ParseVisualizations, DropsDuplicateNames )
+{
+  std::map<std::string, rclcpp::ParameterValue> overrides;
+  overrides["visualizations.a_map.name"] = str( "Map" );
+  overrides["visualizations.a_map.topic"] = str( "map_a" );
+  overrides["visualizations.b_map.name"] = str( "Map" );
+  overrides["visualizations.b_map.topic"] = str( "map_b" );
+  overrides["visualizations.c_other.topic"] = str( "other" );
+
+  const auto result = parse_visualizations( overrides, logger() );
+
+  ASSERT_EQ( result.size(), 2u );
+  // "a_map" claims the name "Map"; "b_map" is dropped. "c_other" keeps its id as name.
+  EXPECT_EQ( result[0].name, "Map" );
+  EXPECT_EQ( result[0].topic, "map_a" );
+  EXPECT_EQ( result[1].name, "c_other" );
+}
+
+// A duplicate collides on the resolved name even when it comes from the id fallback.
+TEST( ParseVisualizations, DuplicateNameCollidesWithIdFallback )
+{
+  std::map<std::string, rclcpp::ParameterValue> overrides;
+  overrides["visualizations.cloud.topic"] = str( "points_a" );
+  overrides["visualizations.zebra.name"] = str( "cloud" ); // explicit name equals the other's id
+  overrides["visualizations.zebra.topic"] = str( "points_b" );
+
+  const auto result = parse_visualizations( overrides, logger() );
+
+  ASSERT_EQ( result.size(), 1u );
+  // Sorted by id: "cloud" (name falls back to "cloud") wins; "zebra" reusing "cloud" is dropped.
+  EXPECT_EQ( result.front().name, "cloud" );
+  EXPECT_EQ( result.front().topic, "points_a" );
+}
+
 // Hint values are stringified; unrelated overrides are not treated as visualizations.
 TEST( ParseVisualizations, StringifiesScalarsAndIgnoresUnrelated )
 {
