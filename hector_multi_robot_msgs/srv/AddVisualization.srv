@@ -1,0 +1,5 @@
+# Adds or replaces (by `name`) a visualization in the robot's announcement and republishes it.
+Visualization visualization
+---
+bool success
+string message

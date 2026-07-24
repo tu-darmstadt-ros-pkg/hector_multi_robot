@@ -2,6 +2,7 @@
 #define HECTOR_MULTI_ROBOT_ANNOUNCEMENT_VISUALIZATION_CONFIG_HPP
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -14,8 +15,6 @@ namespace hector_multi_robot_announcement
 
 //! @brief Parameter name prefix that identifies a visualization configuration block.
 inline constexpr const char *kVisualizationPrefix = "visualizations.";
-//! @brief Field name (under a visualization id) that holds the display hint key/value map.
-inline constexpr const char *kVisualizationHintsField = "hints.";
 
 //! @brief Builds the announced Visualization list from parameter overrides of the form
 //!        "visualizations.<id>.<field>".
@@ -35,6 +34,16 @@ inline constexpr const char *kVisualizationHintsField = "hints.";
 std::vector<hector_multi_robot_msgs::msg::Visualization>
 parse_visualizations( const std::map<std::string, rclcpp::ParameterValue> &overrides,
                       const rclcpp::Logger &logger );
+
+//! @brief Validates a Visualization in place for the runtime `add_visualization` service. Requires a
+//!        non-empty `name` and `topic`. Returns a human-readable reason phrase when invalid, or
+//!        std::nullopt when valid.
+//!
+//! Unlike parse_visualizations this is not used by the config path: there is no map key to fall back
+//! to for an empty `name`, and the service's upsert-by-name keeps names unique without the parse
+//! path's cross-entry dedupe.
+std::optional<std::string>
+normalize_visualization( hector_multi_robot_msgs::msg::Visualization &visualization );
 
 } // namespace hector_multi_robot_announcement
 

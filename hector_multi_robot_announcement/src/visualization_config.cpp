@@ -1,6 +1,7 @@
 #include "hector_multi_robot_announcement/visualization_config.hpp"
 
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
 
@@ -52,14 +53,11 @@ void apply_field( Visualization &vis, const std::string &id, const std::string &
                    "hidden.",
                    id.c_str() );
     }
-  } else if ( field.rfind( kVisualizationHintsField, 0 ) == 0 ) {
-    const std::string key = field.substr( std::char_traits<char>::length( kVisualizationHintsField ) );
-    if ( !key.empty() ) {
-      vis.keys.push_back( key );
-      vis.values.push_back( rclcpp::to_string( value ) );
-    }
+  } else {
+    // A "hints.<key>" field is collected as a key/value hint; any other field is ignored so
+    // consumers may add their own without breaking parsing.
+    try_apply_hint( field, value, vis.keys, vis.values );
   }
-  // Unrecognized fields are ignored so consumers may add their own without breaking parsing.
 }
 } // namespace
 
@@ -97,6 +95,15 @@ parse_visualizations( const std::map<std::string, rclcpp::ParameterValue> &overr
     result.push_back( std::move( vis ) );
   }
   return result;
+}
+
+std::optional<std::string> normalize_visualization( Visualization &visualization )
+{
+  if ( visualization.name.empty() )
+    return "empty name.";
+  if ( visualization.topic.empty() )
+    return "no 'topic' configured.";
+  return std::nullopt;
 }
 
 } // namespace hector_multi_robot_announcement

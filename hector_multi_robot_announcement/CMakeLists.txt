@@ -22,6 +22,7 @@ find_package(tf2_ros REQUIRED)
 
 
 add_library(simple_multi_robot_announcer_component SHARED
+  src/announcer.cpp
   src/sensor_config.cpp
   src/simple_multi_robot_announcer.cpp
   src/status_reporter.cpp
@@ -86,6 +87,10 @@ if(BUILD_TESTING)
   ament_add_gtest(test_sensor_config test/test_sensor_config.cpp)
   target_link_libraries(test_sensor_config simple_multi_robot_announcer_component)
   ament_target_dependencies(test_sensor_config rclcpp hector_multi_robot_msgs)
+
+  ament_add_gtest(test_announcer test/test_announcer.cpp)
+  target_link_libraries(test_announcer simple_multi_robot_announcer_component)
+  ament_target_dependencies(test_announcer rclcpp hector_multi_robot_msgs)
 endif()
 
 ament_package()

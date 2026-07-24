@@ -1,6 +1,8 @@
 #include "hector_multi_robot_announcement/simple_multi_robot_announcer.hpp"
 
 #include <algorithm>
+#include <cstddef>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -56,6 +58,58 @@ std::string truncate_for_log( const std::string &value )
     return value;
   return value.substr( 0, kMaxLoggedValueLength - 3 ) + "...";
 }
+
+//! @brief Logs a one-time startup summary of the built announcement (name/id/namespace/type,
+//!        configuration keys, visualizations and sensors), truncating long lists and values. Called
+//!        before the announcement is handed to the Announcer, so the formatting helpers stay in the
+//!        node rather than in the Announcer.
+void log_announcement_summary( const rclcpp::Logger &logger, const RobotAnnouncement &announcement )
+{
+  RCLCPP_INFO_STREAM( logger, "Announcing robot named '"
+                                  << announcement.name << "' with id '" << announcement.id
+                                  << "' in namespace: " << announcement.ros_namespace );
+  if ( !announcement.type.empty() )
+    RCLCPP_INFO_STREAM( logger, "Robot type: " << announcement.type );
+
+  if ( announcement.keys.empty() ) {
+    RCLCPP_INFO( logger, "No configuration keys." );
+  } else {
+    std::ostringstream config_log;
+    config_log << "Configuration (" << announcement.keys.size() << " keys):";
+    for ( size_t i = 0; i < announcement.keys.size() && i < kMaxLoggedEntries; ++i )
+      config_log << "\n  " << announcement.keys[i] << ": " << truncate_for_log( announcement.values[i] );
+    if ( announcement.keys.size() > kMaxLoggedEntries )
+      config_log << "\n  ... and " << ( announcement.keys.size() - kMaxLoggedEntries ) << " more";
+    RCLCPP_INFO_STREAM( logger, config_log.str() );
+  }
+
+  if ( announcement.visualizations.empty() ) {
+    RCLCPP_INFO( logger, "No visualizations." );
+  } else {
+    std::ostringstream vis_log;
+    vis_log << "Visualizations (" << announcement.visualizations.size() << "):";
+    for ( size_t i = 0; i < announcement.visualizations.size() && i < kMaxLoggedEntries; ++i )
+      vis_log << "\n  " << announcement.visualizations[i].name << " ("
+              << announcement.visualizations[i].topic << ")";
+    if ( announcement.visualizations.size() > kMaxLoggedEntries )
+      vis_log << "\n  ... and " << ( announcement.visualizations.size() - kMaxLoggedEntries )
+              << " more";
+    RCLCPP_INFO_STREAM( logger, vis_log.str() );
+  }
+
+  if ( announcement.sensors.empty() ) {
+    RCLCPP_INFO( logger, "No sensors." );
+  } else {
+    std::ostringstream sensor_log;
+    sensor_log << "Sensors (" << announcement.sensors.size() << "):";
+    for ( size_t i = 0; i < announcement.sensors.size() && i < kMaxLoggedEntries; ++i )
+      sensor_log << "\n  " << announcement.sensors[i].name << " ("
+                 << announcement.sensors[i].topic << ")";
+    if ( announcement.sensors.size() > kMaxLoggedEntries )
+      sensor_log << "\n  ... and " << ( announcement.sensors.size() - kMaxLoggedEntries ) << " more";
+    RCLCPP_INFO_STREAM( logger, sensor_log.str() );
+  }
+}
 } // namespace
 
 SimpleMultiRobotAnnouncer::SimpleMultiRobotAnnouncer( const rclcpp::NodeOptions &options )
@@ -77,105 +131,34 @@ SimpleMultiRobotAnnouncer::SimpleMultiRobotAnnouncer( const rclcpp::NodeOptions 
           "The type of robot (e.g. wheeled, tracked, legged, quadcopter, humanoid; custom allowed)." ) );
 
   robot_id_ = get_parameter( "robot_id" ).as_string();
-  robot_name_ = get_parameter( "robot_name" ).as_string();
   robot_namespace_ = normalize_namespace( get_parameter( "robot_namespace" ).as_string() );
-  robot_type_ = get_parameter( "type" ).as_string();
   const auto &overrides = get_node_parameters_interface()->get_parameter_overrides();
-  configuration_ = parse_configuration( overrides );
-  visualizations_ = parse_visualizations( overrides, get_logger() );
-  sensors_ = parse_sensors( overrides, get_logger() );
 
-  setup();
+  // Build the initial announcement from the parameters and overrides. Announcer sets the header
+  // stamp on every publish, so it is left unset here.
+  RobotAnnouncement announcement;
+  announcement.id = robot_id_;
+  announcement.name = get_parameter( "robot_name" ).as_string();
+  announcement.ros_namespace = robot_namespace_;
+  announcement.type = get_parameter( "type" ).as_string();
+  for ( const auto &[key, value] : parse_configuration( overrides ) ) {
+    announcement.keys.push_back( key );
+    announcement.values.push_back( value );
+  }
+  announcement.visualizations = parse_visualizations( overrides, get_logger() );
+  announcement.sensors = parse_sensors( overrides, get_logger() );
+
+  log_announcement_summary( get_logger(), announcement );
+
+  setup( std::move( announcement ) );
 }
 
-void SimpleMultiRobotAnnouncer::setup()
+void SimpleMultiRobotAnnouncer::setup( RobotAnnouncement announcement )
 {
-  const rclcpp::QoS announcement_qos = latched_qos();
-  announcement_publisher_ =
-      create_publisher<RobotAnnouncement>( "robot_announcement", announcement_qos );
-  if ( get_effective_namespace() != "/" ) {
-    global_announcement_publisher_ =
-        create_publisher<RobotAnnouncement>( "/robot_announcement", announcement_qos );
-  }
-
-  RCLCPP_INFO_STREAM( get_logger(), "Announcing robot named '"
-                                        << robot_name_ << "' with id '" << robot_id_
-                                        << "' in namespace: " << robot_namespace_ );
-  if ( !robot_type_.empty() )
-    RCLCPP_INFO_STREAM( get_logger(), "Robot type: " << robot_type_ );
-
-  if ( configuration_.empty() ) {
-    RCLCPP_INFO( get_logger(), "No configuration keys." );
-  } else {
-    std::ostringstream config_log;
-    config_log << "Configuration (" << configuration_.size() << " keys):";
-    size_t logged = 0;
-    for ( const auto &[key, value] : configuration_ ) {
-      if ( logged++ >= kMaxLoggedEntries )
-        break;
-      config_log << "\n  " << key << ": " << truncate_for_log( value );
-    }
-    if ( configuration_.size() > kMaxLoggedEntries )
-      config_log << "\n  ... and " << ( configuration_.size() - kMaxLoggedEntries )
-                 << " more";
-    RCLCPP_INFO_STREAM( get_logger(), config_log.str() );
-  }
-
-  if ( visualizations_.empty() ) {
-    RCLCPP_INFO( get_logger(), "No visualizations." );
-  } else {
-    std::ostringstream vis_log;
-    vis_log << "Visualizations (" << visualizations_.size() << "):";
-    size_t logged = 0;
-    for ( const auto &visualization : visualizations_ ) {
-      if ( logged++ >= kMaxLoggedEntries )
-        break;
-      vis_log << "\n  " << visualization.name << " (" << visualization.topic << ")";
-    }
-    if ( visualizations_.size() > kMaxLoggedEntries )
-      vis_log << "\n  ... and " << ( visualizations_.size() - kMaxLoggedEntries ) << " more";
-    RCLCPP_INFO_STREAM( get_logger(), vis_log.str() );
-  }
-
-  if ( sensors_.empty() ) {
-    RCLCPP_INFO( get_logger(), "No sensors." );
-  } else {
-    std::ostringstream sensor_log;
-    sensor_log << "Sensors (" << sensors_.size() << "):";
-    size_t logged = 0;
-    for ( const auto &sensor : sensors_ ) {
-      if ( logged++ >= kMaxLoggedEntries )
-        break;
-      sensor_log << "\n  " << sensor.name << " (" << sensor.topic << ")";
-    }
-    if ( sensors_.size() > kMaxLoggedEntries )
-      sensor_log << "\n  ... and " << ( sensors_.size() - kMaxLoggedEntries ) << " more";
-    RCLCPP_INFO_STREAM( get_logger(), sensor_log.str() );
-  }
-
-  publish_announcement();
+  announcer_ = std::make_unique<Announcer>( *this, std::move( announcement ) );
 
   tf_forwarder_ = std::make_unique<TfForwarder>( *this, robot_namespace_ );
   topic_forwarder_ = std::make_unique<TopicForwarder>( *this, robot_namespace_ );
   status_reporter_ = std::make_unique<StatusReporter>( *this, robot_id_ );
-}
-
-void SimpleMultiRobotAnnouncer::publish_announcement()
-{
-  RobotAnnouncement announcement;
-  announcement.header.stamp = now();
-  announcement.id = robot_id_;
-  announcement.name = robot_name_;
-  announcement.ros_namespace = robot_namespace_;
-  announcement.type = robot_type_;
-  for ( const auto &[key, value] : configuration_ ) {
-    announcement.keys.push_back( key );
-    announcement.values.push_back( value );
-  }
-  announcement.visualizations = visualizations_;
-  announcement.sensors = sensors_;
-  announcement_publisher_->publish( announcement );
-  if ( global_announcement_publisher_ )
-    global_announcement_publisher_->publish( announcement );
 }
 } // namespace hector_multi_robot_announcement

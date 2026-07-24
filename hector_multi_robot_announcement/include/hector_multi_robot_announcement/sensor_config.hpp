@@ -2,6 +2,7 @@
 #define HECTOR_MULTI_ROBOT_ANNOUNCEMENT_SENSOR_CONFIG_HPP
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -14,8 +15,6 @@ namespace hector_multi_robot_announcement
 
 //! @brief Parameter name prefix that identifies a sensor configuration block.
 inline constexpr const char *kSensorPrefix = "sensors.";
-//! @brief Field name (under a sensor id) that holds the display/threshold hint key/value map.
-inline constexpr const char *kSensorHintsField = "hints.";
 
 //! @brief Builds the announced Sensor list from parameter overrides of the form
 //!        "sensors.<id>.<field>".
@@ -31,6 +30,12 @@ inline constexpr const char *kSensorHintsField = "hints.";
 std::vector<hector_multi_robot_msgs::msg::Sensor>
 parse_sensors( const std::map<std::string, rclcpp::ParameterValue> &overrides,
                const rclcpp::Logger &logger );
+
+//! @brief Validates and normalizes a Sensor in place, shared by the config parse path and the runtime
+//!        `add_sensor` service. Requires a non-empty `id` and `topic`, and defaults an empty `name`
+//!        to the `id`. Returns a human-readable reason phrase when invalid (leaving the message
+//!        partially normalized), or std::nullopt when valid.
+std::optional<std::string> normalize_sensor( hector_multi_robot_msgs::msg::Sensor &sensor );
 
 } // namespace hector_multi_robot_announcement
 

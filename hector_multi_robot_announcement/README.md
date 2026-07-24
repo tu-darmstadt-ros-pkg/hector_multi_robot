@@ -38,9 +38,21 @@ published on the global (un-namespaced) topics even when the node runs under the
 
 ### Services
 
-| Service    | Type                                  | Description                                                                                           |
-| ---------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| set_status | hector_multi_robot_msgs/srv/SetStatus | Set the status code/message reported in `robot_status`. Available when `status.status_frequency` > 0. |
+| Service              | Type                                            | Description                                                                                            |
+| -------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| add_sensor           | hector_multi_robot_msgs/srv/AddSensor           | Add or replace (by `id`) a sensor in the announcement and republish it. Returns `success` + `message`. |
+| remove_sensor        | hector_multi_robot_msgs/srv/RemoveSensor        | Remove the sensor with this `id` and republish. `success` is false if no sensor has that `id`.         |
+| add_visualization    | hector_multi_robot_msgs/srv/AddVisualization    | Add or replace (by `name`) a visualization and republish it. Returns `success` + `message`.            |
+| remove_visualization | hector_multi_robot_msgs/srv/RemoveVisualization | Remove the visualization with this `name` and republish. `success` is false if none has that `name`.   |
+| set_status           | hector_multi_robot_msgs/srv/SetStatus           | Set the status code/message reported in `robot_status`. Available when `status.status_frequency` > 0.  |
+
+The four `add_*`/`remove_*` services are always available (the announcement always exists). Add is an
+upsert: it replaces an existing entry with the same `id` (sensor) / `name` (visualization), else
+appends. Add validates the entry (a sensor needs a non-empty `id` and `topic`; a visualization a
+non-empty `name` and `topic`) and rejects an invalid one with `success = false`. Every successful
+add/remove republishes the latched `robot_announcement` (and the global `/robot_announcement` when the
+node is namespaced), so consumers always see the newest full announcement. Runtime changes are held in
+memory only and are lost on restart.
 
 ### Parameters
 

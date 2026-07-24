@@ -1,8 +1,9 @@
 # Example configuration for hector_multi_robot_announcement::SimpleMultiRobotAnnouncer.
 #
 # The announcer:
-#   * publishes a one-shot RobotAnnouncement on `robot_announcement` (namespaced) and
-#     `/robot_announcement` (global, transient_local).
+#   * publishes a RobotAnnouncement on `robot_announcement` (namespaced) and `/robot_announcement`
+#     (global, transient_local) on startup, and republishes it on every successful add/remove via the
+#     `add_sensor`/`remove_sensor`/`add_visualization`/`remove_visualization` services.
 #   * forwards `<robot_namespace>/tf` to global `/tf` (when `enable_tf_forwarding` is true),
 #     prefixing frame ids with `<robot_namespace>/` and rate-limiting per child frame.
 #   * forwards `<robot_namespace>/tf_static` to global `/tf_static` (no rate limit).

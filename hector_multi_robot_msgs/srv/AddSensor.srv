@@ -1,0 +1,5 @@
+# Adds or replaces (by `id`) a sensor in the robot's announcement and republishes it.
+Sensor sensor
+---
+bool success
+string message

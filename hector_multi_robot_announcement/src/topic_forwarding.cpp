@@ -109,15 +109,18 @@ void prefix_frame_ids( Message &message, const std::string &prefix,
 {
   if ( message.type() == MessageTypes::Compound ) {
     auto &compound = message.as<CompoundMessage>();
-    const auto keys = compound.keys();
     auto values = compound.values();
-    for ( size_t i = 0; i < keys.size(); ++i ) {
+    for ( size_t i = 0; i < values.size(); ++i ) {
       Message &child = *values[i];
-      if ( child.type() == MessageTypes::String &&
-           ( keys[i] == "frame_id" || keys[i] == "child_frame_id" ) )
-        child = prefix_frame_id( child.value<std::string>(), prefix, global_frames );
-      else
+      // Only a string member can be a frame id, so fetch its name via keyAt() lazily rather than
+      // materializing the whole key vector (keys()) for every compound on every forwarded message.
+      if ( child.type() == MessageTypes::String ) {
+        const std::string key = compound.keyAt( i );
+        if ( key == "frame_id" || key == "child_frame_id" )
+          child = prefix_frame_id( child.value<std::string>(), prefix, global_frames );
+      } else {
         prefix_frame_ids( child, prefix, global_frames );
+      }
     }
   } else if ( message.type() == MessageTypes::Array ) {
     invoke_for_array_message( message.as<ArrayMessageBase>(),

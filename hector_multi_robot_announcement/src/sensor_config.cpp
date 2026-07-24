@@ -1,6 +1,7 @@
 #include "hector_multi_robot_announcement/sensor_config.hpp"
 
 #include <map>
+#include <optional>
 #include <string>
 
 #include <rclcpp/logging.hpp>
@@ -30,14 +31,11 @@ void apply_field( Sensor &sensor, const std::string &field, const rclcpp::Parame
     sensor.unit = rclcpp::to_string( value );
   } else if ( field == "icon" ) {
     sensor.icon = rclcpp::to_string( value );
-  } else if ( field.rfind( kSensorHintsField, 0 ) == 0 ) {
-    const std::string key = field.substr( std::char_traits<char>::length( kSensorHintsField ) );
-    if ( !key.empty() ) {
-      sensor.keys.push_back( key );
-      sensor.values.push_back( rclcpp::to_string( value ) );
-    }
+  } else {
+    // A "hints.<key>" field is collected as a key/value hint; any other field is ignored so
+    // consumers may add their own without breaking parsing.
+    try_apply_hint( field, value, sensor.keys, sensor.values );
   }
-  // Unrecognized fields are ignored so consumers may add their own without breaking parsing.
 }
 } // namespace
 
@@ -56,15 +54,24 @@ std::vector<Sensor> parse_sensors( const std::map<std::string, rclcpp::Parameter
   std::vector<Sensor> result;
   for ( auto &[id, sensor] : by_id ) {
     sensor.id = id; // The config map key is the stable sensor identifier.
-    if ( sensor.name.empty() )
-      sensor.name = id; // Fall back to the map key as the human-readable name.
-    if ( sensor.topic.empty() ) {
-      RCLCPP_WARN( logger, "Skipping sensor '%s': no 'topic' configured.", id.c_str() );
+    if ( const std::optional<std::string> reason = normalize_sensor( sensor ) ) {
+      RCLCPP_WARN( logger, "Skipping sensor '%s': %s", id.c_str(), reason->c_str() );
       continue;
     }
     result.push_back( std::move( sensor ) );
   }
   return result;
+}
+
+std::optional<std::string> normalize_sensor( Sensor &sensor )
+{
+  if ( sensor.id.empty() )
+    return "empty id.";
+  if ( sensor.name.empty() )
+    sensor.name = sensor.id; // Fall back to the id as the human-readable name.
+  if ( sensor.topic.empty() )
+    return "no 'topic' configured.";
+  return std::nullopt;
 }
 
 } // namespace hector_multi_robot_announcement

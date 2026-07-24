@@ -111,6 +111,26 @@ void for_each_override_id_field( const std::map<std::string, rclcpp::ParameterVa
   }
 }
 
+//! @brief Prefix marking an override field as a free-form hint ("hints.<key>"): the remainder after
+//!        the prefix is the hint key. Shared by the sensor and visualization parsers.
+inline constexpr const char *kHintsFieldPrefix = "hints.";
+
+//! @brief If `field` is a "hints.<key>" entry, appends the key (unless empty) and the stringified
+//!        `value` to the parallel `keys`/`values` vectors and returns true; returns false for any
+//!        non-hint field, leaving the vectors untouched.
+inline bool try_apply_hint( const std::string &field, const rclcpp::ParameterValue &value,
+                            std::vector<std::string> &keys, std::vector<std::string> &values )
+{
+  if ( field.rfind( kHintsFieldPrefix, 0 ) != 0 )
+    return false;
+  const std::string key = field.substr( std::char_traits<char>::length( kHintsFieldPrefix ) );
+  if ( !key.empty() ) {
+    keys.push_back( key );
+    values.push_back( rclcpp::to_string( value ) );
+  }
+  return true;
+}
+
 //! @brief Extracts string key/value pairs from parameter overrides of the form
 //!        "configuration.<key>".
 //!

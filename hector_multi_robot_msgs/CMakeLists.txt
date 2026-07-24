@@ -12,6 +12,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   msg/RobotStatus.msg
   msg/Sensor.msg
   msg/Visualization.msg
+  srv/AddSensor.srv
+  srv/AddVisualization.srv
+  srv/RemoveSensor.srv
+  srv/RemoveVisualization.srv
   srv/SetStatus.srv
   DEPENDENCIES sensor_msgs std_msgs
 )

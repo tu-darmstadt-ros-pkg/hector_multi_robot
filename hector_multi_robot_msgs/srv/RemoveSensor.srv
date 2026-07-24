@@ -1,0 +1,5 @@
+# Removes the sensor with this `id` from the robot's announcement and republishes it.
+string id
+---
+bool success
+string message

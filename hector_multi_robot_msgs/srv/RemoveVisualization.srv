@@ -1,0 +1,5 @@
+# Removes the visualization with this `name` from the robot's announcement and republishes it.
+string name
+---
+bool success
+string message
