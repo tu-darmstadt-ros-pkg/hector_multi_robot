@@ -16,7 +16,7 @@ Announcement nodes for multi robot use.
 
 The tf topics are only subscribed when `enable_tf_forwarding` is true and `robot_namespace` is set
 (non-root). Each `topic_forwarding.topics.<id>` topic is subscribed when `robot_namespace` is set and
-`topic_forwarding.subnamespace` is non-empty (see Topic forwarding). Additionally, when
+the topic lies inside it (see Topic forwarding). Additionally, when
 `status.status_frequency` is > 0, each topic configured under `status.battery.state_topics.<label>` is
 subscribed as a `sensor_msgs/msg/BatteryState` and aggregated into `robot_status`.
 
@@ -30,7 +30,7 @@ subscribed as a `sensor_msgs/msg/BatteryState` and aggregated into `robot_status
 | robot_heartbeat                            | hector_multi_robot_msgs/msg/Heartbeat         | Periodic heartbeat (stamp + sequence number) for liveness. Only when `status.heartbeat_frequency` > 0.                 |
 | /tf                                        | tf2_msgs/msg/TFMessage                        | Forwarded dynamic transforms, frame ids prefixed, rate-limited per child frame.                                        |
 | /tf_static                                 | tf2_msgs/msg/TFMessage                        | Forwarded static transforms, frame ids prefixed (no rate limit).                                                       |
-| `<robot_namespace>/<subnamespace>/<topic>` | (same as source)                              | Forwarded topic with every `frame_id`/`child_frame_id` prefixed. One per `topic_forwarding.topics.<id>`.               |
+| `<robot_namespace>/world/<topic>`          | (same as source)                              | Forwarded topic with every `frame_id`/`child_frame_id` prefixed. One per `topic_forwarding.topics.<id>`.               |
 
 `/tf` and `/tf_static` are only published when forwarding is active (see Subscribed Topics). They are
 published on the global (un-namespaced) topics even when the node runs under the common multi-robot
@@ -87,8 +87,7 @@ All parameters are read-only.
 | tf_config.global_frames                    | string[] | []        | Frame ids shared across robots that must not be prefixed when forwarded (e.g. `map`, `world`). Reused by topic forwarding. |
 | tf_config.max_rate                         | double   | 30.0      | Max rate (Hz) at which frames without an explicit per-frame rate are forwarded. 0 disables the limit.                      |
 | tf_config.frame_configs.\<frame>.rate      | double   |           | Per-frame max forwarding rate (Hz) for child frame `<frame>`. 0 forwards every message.                                    |
-| topic_forwarding.subnamespace              | string   | "world"   | Subnamespace forwarded topics are republished under (`<ns>/<subnamespace>/<topic>`). Empty disables topic forwarding.      |
-| topic_forwarding.topics.\<id>.topic        | string   |           | Source topic to forward, relative to `<robot_namespace>` (required; entry skipped if missing/empty).                       |
+| topic_forwarding.topics.\<id>.topic        | string   |           | Source topic to forward, relative or absolute inside `<robot_namespace>` (required; skipped if missing/empty/outside).     |
 | topic_forwarding.topics.\<id>.message_type | string   | ""        | Message type, e.g. `nav_msgs/msg/Path`. Empty auto-discovers it from the ROS graph; a set value pins it.                   |
 
 `configuration.<key>` holds an open-ended map, so its keys are read straight from the parameter
@@ -111,8 +110,9 @@ declarations; it does not subscribe to the sensor topics or read their values.
 
 With tf forwarding, forwarded frames are prefixed on the global `/tf` (e.g. `robot1/odom`), but
 visualization messages keep their original, un-prefixed `frame_id`s. Visualization topics consumed
-globally should therefore publish in frames listed in `tf_config.global_frames` (forwarded
-un-prefixed), or the consumer must rewrite the frame ids itself to match the prefixed global tf tree.
+globally should therefore be forwarded via topic forwarding (see below), publish in frames listed in
+`tf_config.global_frames` (forwarded un-prefixed), or the consumer must rewrite the frame ids itself
+to match the prefixed global tf tree.
 
 To forward every frame (no shared frames), omit `tf_config.global_frames` entirely. Do **not**
 set it to an empty list (`global_frames: []`): an empty YAML sequence has no element type, so the
@@ -121,10 +121,21 @@ applies to any other array parameter.
 
 ### Topic forwarding
 
-`topic_forwarding` re-publishes a configured set of the robot's onboard topics into a subnamespace,
-rewriting every `frame_id`/`child_frame_id` so it matches the prefixed global tf tree produced by tf
-forwarding. Example: `/athena/move_base/path` is forwarded to `/athena/world/move_base/path` with
-`header.frame_id` `odom` rewritten to `athena/odom`.
+`topic_forwarding` re-publishes a configured set of the robot's onboard topics into the fixed
+`<robot_namespace>/world` namespace, rewriting every `frame_id`/`child_frame_id` so it matches the
+prefixed global tf tree produced by tf forwarding. Example: `/athena/move_base/path` is forwarded to
+`/athena/world/move_base/path` with `header.frame_id` `odom` rewritten to `athena/odom`.
+
+`topic` may be relative or absolute but must resolve inside `<robot_namespace>`: `plan` and
+`/athena/plan` both forward to `/athena/world/plan`. Topics outside the robot namespace (e.g. `/map`)
+are skipped with a warning.
+
+Because the `world` namespace is fixed, a consumer can derive the forwarded topic from a
+visualization's `topic` without extra configuration: resolve it against the announcement's
+`ros_namespace` and insert `world/` after the namespace. A UI running in the robot namespace (local
+`<robot_namespace>/tf`, un-prefixed frames) uses the original topic; a UI running in the global
+namespace (global `/tf`, prefixed frames) uses the `world` topic if it exists. Topics outside the
+robot namespace are used as is.
 
 `topics` is an open-ended map read straight from the overrides (like `visualizations`). Each `<id>`
 names one forwarded topic; only `topic` is required. The message type is auto-discovered from the ROS
@@ -133,10 +144,9 @@ automatically); set `message_type` to pin it explicitly. Frames listed in `tf_co
 (shared with tf forwarding) are forwarded un-prefixed; everything else is prefixed with
 `<robot_namespace>/`.
 
-Forwarding is presence-driven and stays inert unless the node is namespaced, at least one topic is configured, and
-`topic_forwarding.subnamespace` is non-empty. An empty subnamespace is rejected because the output
-topic would equal the input topic. Republished topics live under the robot namespace, so unlike tf
-forwarding they do not need the global `/tf` remap bypass.
+Forwarding is presence-driven and stays inert unless the node is namespaced and at least one topic
+inside the robot namespace is configured. Republished topics live under the robot namespace, so
+unlike tf forwarding they do not need the global `/tf` remap bypass.
 
 Messages are forwarded via [`ros_babel_fish`](https://github.com/LOEWE-emergenCITY/ros_babel_fish)
 which provides full message introspection, so the types do not need to be known in advance.

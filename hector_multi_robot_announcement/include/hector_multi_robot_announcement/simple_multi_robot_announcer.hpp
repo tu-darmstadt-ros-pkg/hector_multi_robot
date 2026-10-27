@@ -34,7 +34,7 @@ private:
   //! @brief Forwards the robot's namespaced tf tree to the global tf tree (inert unless enabled).
   std::unique_ptr<TfForwarder> tf_forwarder_;
 
-  //! @brief Forwards configured topics into a subnamespace, rewriting frame ids (inert unless
+  //! @brief Forwards configured topics into `<ns>/world`, rewriting frame ids (inert unless
   //!        topics are configured).
   std::unique_ptr<TopicForwarder> topic_forwarder_;
 

@@ -13,6 +13,7 @@
 using hector_multi_robot_announcement::ForwardedTopicConfig;
 using hector_multi_robot_announcement::parse_forwarded_topics;
 using hector_multi_robot_announcement::prefix_frame_ids;
+using hector_multi_robot_announcement::topic_relative_to_namespace;
 using hector_multi_robot_announcement::TopicForwarder;
 using ros_babel_fish::BabelFish;
 using ros_babel_fish::CompoundArrayMessage;
@@ -59,7 +60,6 @@ TEST( ParseForwardedTopics, IgnoresUnknownFieldsAndUnrelatedKeys )
 {
   std::map<std::string, rclcpp::ParameterValue> overrides;
   overrides["robot_id"] = rclcpp::ParameterValue( std::string( "robot1" ) );
-  overrides["topic_forwarding.subnamespace"] = rclcpp::ParameterValue( std::string( "world" ) );
   overrides["topic_forwarding.topics.foo.topic"] = rclcpp::ParameterValue( std::string( "bar" ) );
   overrides["topic_forwarding.topics.foo.unknown"] = rclcpp::ParameterValue( true );
 
@@ -68,6 +68,20 @@ TEST( ParseForwardedTopics, IgnoresUnknownFieldsAndUnrelatedKeys )
   ASSERT_EQ( topics.size(), 1u );
   EXPECT_EQ( topics[0].id, "foo" );
   EXPECT_EQ( topics[0].topic, "bar" );
+}
+
+// --- topic_relative_to_namespace ---------------------------------------------
+
+TEST( TopicRelativeToNamespace, ResolvesInsideNamespaceOnly )
+{
+  EXPECT_EQ( topic_relative_to_namespace( "plan", "/robot1" ), "plan" );
+  EXPECT_EQ( topic_relative_to_namespace( "a//b/", "/robot1" ), "a/b" );
+  EXPECT_EQ( topic_relative_to_namespace( "/robot1/plan", "/robot1" ), "plan" );
+  EXPECT_EQ( topic_relative_to_namespace( "//robot1//a/b", "/robot1" ), "a/b" );
+  EXPECT_EQ( topic_relative_to_namespace( "/map", "/robot1" ), std::nullopt );
+  EXPECT_EQ( topic_relative_to_namespace( "/robot1", "/robot1" ), std::nullopt );
+  EXPECT_EQ( topic_relative_to_namespace( "/robot10/plan", "/robot1" ), std::nullopt );
+  EXPECT_EQ( topic_relative_to_namespace( "/", "/robot1" ), std::nullopt );
 }
 
 // --- prefix_frame_ids --------------------------------------------------------
@@ -115,9 +129,9 @@ std::shared_ptr<rclcpp::Node> make_node( const std::string &name,
 }
 } // namespace
 
-// active() reflects whether forwarding was wired up: namespaced AND at least one topic AND a
-// non-empty subnamespace. Each case gets its own node since the subnamespace param is declared once.
-TEST( TopicForwarderActivation, ActiveOnlyWhenNamespacedTopicsAndSubnamespace )
+// active() reflects whether forwarding was wired up: namespaced AND at least one topic inside the
+// robot namespace. Each case gets its own node since the topics are read from the overrides.
+TEST( TopicForwarderActivation, ActiveOnlyWhenNamespacedWithForwardableTopics )
 {
   auto active = make_node(
       "fwd_active",
@@ -131,16 +145,15 @@ TEST( TopicForwarderActivation, ActiveOnlyWhenNamespacedTopicsAndSubnamespace )
   auto no_topics = make_node( "fwd_no_topics", {} );
   EXPECT_FALSE( TopicForwarder( *no_topics, "/robot1" ).active() );
 
-  auto empty_sub = make_node(
-      "fwd_empty_sub", { rclcpp::Parameter( "topic_forwarding.topics.foo.topic", "move_base/pose" ),
-                         rclcpp::Parameter( "topic_forwarding.subnamespace", "" ) } );
-  EXPECT_FALSE( TopicForwarder( *empty_sub, "/robot1" ).active() );
+  auto outside_ns =
+      make_node( "fwd_outside_ns", { rclcpp::Parameter( "topic_forwarding.topics.foo.topic", "/map" ) } );
+  EXPECT_FALSE( TopicForwarder( *outside_ns, "/robot1" ).active() ); // only topic is skipped
 }
 
 // --- TopicForwarder integration ----------------------------------------------
 
 // End-to-end: a PoseStamped published on <ns>/move_base/pose (type auto-discovered from the graph)
-// is republished on <ns>/<subnamespace>/move_base/pose with its frame id prefixed. A short
+// is republished on <ns>/world/move_base/pose with its frame id prefixed. A short
 // resolve_period removes the 1 Hz production floor so the test is not gated on the timer.
 TEST( TopicForwarderIntegration, ForwardsWithFramePrefix )
 {

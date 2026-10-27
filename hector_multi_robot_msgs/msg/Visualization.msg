@@ -2,6 +2,8 @@
 
 string name           # Human-readable, e.g. "Elevation Map" (must be unique in announcement)
 string topic          # Relative names resolve against ros_namespace, absolute allowed
+                      # If forwarded, a copy with frame ids prefixed for the global tf tree
+                      # exists at <ros_namespace>/world/<topic relative to ros_namespace>.
 string message_type   # e.g. "sensor_msgs/msg/PointCloud2". May be empty; then the
                       # consumer must resolve it from the ROS graph once the topic exists.
 

@@ -7,7 +7,7 @@
 #   * forwards `<robot_namespace>/tf` to global `/tf` (when `enable_tf_forwarding` is true),
 #     prefixing frame ids with `<robot_namespace>/` and rate-limiting per child frame.
 #   * forwards `<robot_namespace>/tf_static` to global `/tf_static` (no rate limit).
-#   * forwards each `topic_forwarding.topics.<id>` topic into `<robot_namespace>/<subnamespace>/`,
+#   * forwards each `topic_forwarding.topics.<id>` topic into `<robot_namespace>/world/`,
 #     rewriting every frame_id/child_frame_id to match the prefixed global tf tree.
 #
 # Frames listed in `tf_config.global_frames` are NOT prefixed when forwarded (use this for
@@ -128,16 +128,16 @@
         imu_link:
           rate: 0.0
 
-    # Re-publishes onboard topics into `<robot_namespace>/<subnamespace>/<topic>`, rewriting every
+    # Re-publishes onboard topics into `<robot_namespace>/world/<topic>`, rewriting every
     # frame_id/child_frame_id to match the prefixed global tf tree (e.g. odom -> robot1/odom).
+    # Topics outside the robot namespace are skipped.
     # Presence-driven: with no `topics` entries it stays inert (no enable flag). The message type is
     # auto-discovered from the graph unless `message_type` pins it. No per-topic rate limiting, so
     # target low-rate topics (paths, maps, plans).
     topic_forwarding:
-      subnamespace: "world" # `<ns>/world/<topic>`; must be non-empty
       topics:
         planned_path:
-          topic: "plan" # relative to robot_namespace; leading '/' allowed
+          topic: "plan" # relative or absolute inside robot_namespace (e.g. /robot1/plan)
           message_type: "nav_msgs/msg/Path" # optional; auto-discovered if omitted
         grid_map:
           topic: "map" # type auto-discovered from the graph

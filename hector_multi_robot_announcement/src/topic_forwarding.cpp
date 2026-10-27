@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <map>
 
-#include <rcl_interfaces/msg/parameter_descriptor.hpp>
 #include <ros_babel_fish/messages/array_message.hpp>
 #include <ros_babel_fish/messages/compound_message.hpp>
 #include <ros_babel_fish/messages/value_message.hpp>
@@ -11,7 +10,6 @@
 
 #include "hector_multi_robot_announcement/utils.hpp"
 
-using rcl_interfaces::msg::ParameterDescriptor;
 using ros_babel_fish::ArrayMessage_;
 using ros_babel_fish::ArrayMessageBase;
 using ros_babel_fish::CompoundArrayMessage_;
@@ -24,15 +22,6 @@ namespace hector_multi_robot_announcement
 
 namespace
 {
-//! @brief Normalizes a subnamespace to a bare relative path: leading/trailing/duplicate slashes are
-//!        collapsed (multi-segment allowed, e.g. "a//b/" -> "a/b"). "/" or empty maps to "" (topic
-//!        forwarding is then disabled). normalize_namespace() yields "/a/b"; drop the leading slash.
-std::string normalize_subnamespace( const std::string &subnamespace )
-{
-  const std::string normalized = normalize_namespace( subnamespace );
-  return normalized == "/" ? "" : normalized.substr( 1 );
-}
-
 //! @brief Functor dispatched over an array message: recurses into compound arrays (each element may
 //!        hold a frame id, e.g. Path.poses[]), ignores primitive/string arrays (a frame id is
 //!        always a scalar string field, never an array).
@@ -104,6 +93,17 @@ parse_forwarded_topics( const std::map<std::string, rclcpp::ParameterValue> &ove
   return result;
 }
 
+std::optional<std::string> topic_relative_to_namespace( const std::string &topic,
+                                                        const std::string &ns )
+{
+  const std::string resolved =
+      normalize_namespace( !topic.empty() && topic.front() == '/' ? topic : ns + "/" + topic );
+  const std::string ns_prefix = ns + "/";
+  if ( resolved.size() <= ns_prefix.size() || resolved.rfind( ns_prefix, 0 ) != 0 )
+    return std::nullopt;
+  return resolved.substr( ns_prefix.size() );
+}
+
 void prefix_frame_ids( Message &message, const std::string &prefix,
                        const std::unordered_set<std::string> &global_frames )
 {
@@ -136,14 +136,6 @@ TopicForwarder::TopicForwarder( rclcpp::Node &node, const std::string &robot_nam
   const std::vector<ForwardedTopicConfig> topics =
       parse_forwarded_topics( overrides, node_.get_logger() );
 
-  node_.declare_parameter<std::string>(
-      "topic_forwarding.subnamespace", "world",
-      ParameterDescriptor().set__read_only( true ).set__description(
-          "Subnamespace under which forwarded topics are republished, e.g. '<ns>/<subnamespace>/"
-          "<topic>'." ) );
-  const std::string subnamespace =
-      normalize_subnamespace( node_.get_parameter( "topic_forwarding.subnamespace" ).as_string() );
-
   // Read global_frames directly from the overrides so we do not depend on TfForwarder having
   // declared it; both default to empty ("prefix everything").
   const auto global_frames_it = overrides.find( "tf_config.global_frames" );
@@ -154,32 +146,32 @@ TopicForwarder::TopicForwarder( rclcpp::Node &node, const std::string &robot_nam
   }
 
   const std::string ns = normalize_namespace( robot_namespace );
-  if ( ns == "/" || topics.empty() || subnamespace.empty() ) {
-    if ( ns == "/" )
-      RCLCPP_INFO( node_.get_logger(), "Topic forwarding inactive: the node is not namespaced." );
-    else if ( topics.empty() )
-      RCLCPP_INFO( node_.get_logger(), "Topic forwarding inactive: no topics configured." );
-    else
-      RCLCPP_WARN( node_.get_logger(),
-                   "Topic forwarding inactive: 'topic_forwarding.subnamespace' is empty (would "
-                   "republish onto the source topic)." );
+  if ( ns == "/" ) {
+    RCLCPP_INFO( node_.get_logger(), "Topic forwarding inactive: the node is not namespaced." );
     return;
   }
   frame_prefix_ = ns.substr( 1 ) + "/";
 
   for ( const ForwardedTopicConfig &config : topics ) {
-    // normalize_namespace collapses leading/trailing/duplicate slashes, so a topic with a leading
-    // '/' or stray slashes composes into a valid rmw topic name instead of throwing on creation.
-    const std::string input_topic = normalize_namespace( ns + "/" + config.topic );
-    const std::string output_topic =
-        normalize_namespace( ns + "/" + subnamespace + "/" + config.topic );
-    pending_.push_back( { input_topic, output_topic, config.message_type } );
+    const std::optional<std::string> relative = topic_relative_to_namespace( config.topic, ns );
+    if ( !relative ) {
+      RCLCPP_WARN( node_.get_logger(),
+                   "Skipping forwarded topic '%s': topic '%s' is not inside the robot namespace "
+                   "'%s'.",
+                   config.id.c_str(), config.topic.c_str(), ns.c_str() );
+      continue;
+    }
+    pending_.push_back( { ns + "/" + *relative, ns + "/world/" + *relative, config.message_type } );
+  }
+  if ( pending_.empty() ) {
+    RCLCPP_INFO( node_.get_logger(), "Topic forwarding inactive: no forwardable topics configured." );
+    return;
   }
 
   RCLCPP_INFO( node_.get_logger(),
-               "Topic forwarding active: forwarding %zu topic(s) into subnamespace '%s' with frame "
-               "prefix '%s'.",
-               pending_.size(), subnamespace.c_str(), frame_prefix_.c_str() );
+               "Topic forwarding active: forwarding %zu topic(s) into '%s/world' with frame prefix "
+               "'%s'.",
+               pending_.size(), ns.c_str(), frame_prefix_.c_str() );
 
   active_ = true;
   resolve_timer_ = node_.create_wall_timer( resolve_period, [this] { resolve_pending(); } );

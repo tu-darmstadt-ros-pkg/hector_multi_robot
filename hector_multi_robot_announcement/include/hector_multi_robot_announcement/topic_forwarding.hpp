@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <map>
+#include <optional>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -24,7 +25,7 @@ inline constexpr const char *kForwardedTopicPrefix = "topic_forwarding.topics.";
 //! @brief One forwarded topic parsed from the `topic_forwarding.topics.<id>` config map.
 struct ForwardedTopicConfig {
   std::string id;
-  std::string topic;         //!< Source topic relative to the robot namespace (leading '/' stripped).
+  std::string topic;         //!< Source topic, relative or absolute inside the robot namespace.
   std::string message_type;  //!< Empty = auto-discover the type from the ROS graph.
 };
 
@@ -39,6 +40,14 @@ std::vector<ForwardedTopicConfig>
 parse_forwarded_topics( const std::map<std::string, rclcpp::ParameterValue> &overrides,
                         const rclcpp::Logger &logger );
 
+//! @brief Returns `topic` relative to the normalized absolute namespace `ns` (e.g. "/robot1"), with
+//!        duplicate/trailing slashes collapsed. A relative topic resolves against `ns`; an absolute
+//!        one must lie strictly inside `ns`. Returns std::nullopt otherwise.
+//!
+//! Examples for `ns` "/robot1": "plan" and "/robot1/plan" -> "plan"; "/map", "/robot1" -> nullopt.
+std::optional<std::string> topic_relative_to_namespace( const std::string &topic,
+                                                        const std::string &ns );
+
 //! @brief Recursively rewrites every `frame_id`/`child_frame_id` string field of `message` via
 //!        prefix_frame_id(), descending into nested compounds and compound arrays.
 //!
@@ -47,19 +56,19 @@ parse_forwarded_topics( const std::map<std::string, rclcpp::ParameterValue> &ove
 void prefix_frame_ids( ros_babel_fish::Message &message, const std::string &prefix,
                        const std::unordered_set<std::string> &global_frames );
 
-//! @brief Forwards a configured set of a robot's namespaced topics into a subnamespace, rewriting
+//! @brief Forwards a configured set of a robot's namespaced topics into `<ns>/world`, rewriting
 //!        every frame id to match the prefixed global tf tree.
 //!
 //! For each configured topic it resolves the message type and QoS from the ROS graph (an explicit
 //! `message_type` pins the type), generically subscribes via ros_babel_fish, rewrites frame ids
 //! with the robot namespace prefix (leaving `tf_config.global_frames` untouched), and republishes
-//! under `<ns>/<subnamespace>/<topic>`. Topics whose publisher has not appeared yet stay pending
-//! and are retried at `resolve_period`.
+//! under `<ns>/world/<topic>` (`<topic>` relative to `<ns>`, see topic_relative_to_namespace()).
+//! Topics outside the robot namespace are skipped with a warning. Topics whose publisher has not
+//! appeared yet stay pending and are retried at `resolve_period`.
 //!
-//! Construction declares the `topic_forwarding.subnamespace` parameter and, when the node is
-//! namespaced and at least one topic and a non-empty subnamespace are configured, starts the
-//! resolve timer. Otherwise the forwarder stays inert (see active()). Keep the instance alive for
-//! as long as forwarding should run.
+//! When the node is namespaced and at least one forwardable topic is configured, construction
+//! starts the resolve timer. Otherwise the forwarder stays inert (see active()). Keep the instance
+//! alive for as long as forwarding should run.
 //!
 //! @note Thread-safety under a multi-threaded executor rests on the resolve timer being the sole
 //!       mutator of the forwarder state and living in a mutually-exclusive callback group; it must
@@ -67,14 +76,14 @@ void prefix_frame_ids( ros_babel_fish::Message &message, const std::string &pref
 class TopicForwarder
 {
 public:
-  //! @param node             Node that owns the parameter, subscriptions and publishers. Must
-  //!                         outlive this forwarder.
+  //! @param node             Node that owns the subscriptions and publishers. Must outlive this
+  //!                         forwarder.
   //! @param robot_namespace  Absolute robot namespace (e.g. "/robot1"); used as frame prefix.
   //! @param resolve_period   Poll interval for resolving pending topics against the graph.
   TopicForwarder( rclcpp::Node &node, const std::string &robot_namespace,
                   std::chrono::nanoseconds resolve_period = std::chrono::seconds( 1 ) );
 
-  //! @brief Whether forwarding is wired up (namespaced, at least one topic, non-empty subnamespace).
+  //! @brief Whether forwarding is wired up (namespaced, at least one forwardable topic).
   bool active() const { return active_; }
 
   //! @brief Number of topics whose subscription has been created so far (for tests).
