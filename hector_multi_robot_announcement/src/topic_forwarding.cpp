@@ -12,6 +12,7 @@
 
 using ros_babel_fish::ArrayMessage_;
 using ros_babel_fish::ArrayMessageBase;
+using ros_babel_fish::ArraySize;
 using ros_babel_fish::CompoundArrayMessage_;
 using ros_babel_fish::CompoundMessage;
 using ros_babel_fish::Message;
@@ -29,14 +30,14 @@ struct FrameArrayRecursor {
   const std::string &prefix;
   const std::unordered_set<std::string> &globals;
 
-  template<bool BOUNDED, bool FIXED_LENGTH>
-  void operator()( CompoundArrayMessage_<BOUNDED, FIXED_LENGTH> &array ) const
+  template<ArraySize SIZE>
+  void operator()( CompoundArrayMessage_<SIZE> &array ) const
   {
     for ( size_t i = 0; i < array.size(); ++i ) prefix_frame_ids( array[i], prefix, globals );
   }
 
-  template<typename T, bool B, bool FL>
-  void operator()( ArrayMessage_<T, B, FL> & ) const
+  template<typename T, ArraySize SIZE>
+  void operator()( ArrayMessage_<T, SIZE> & ) const
   {
   }
 };

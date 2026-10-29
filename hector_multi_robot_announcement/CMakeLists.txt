@@ -41,15 +41,15 @@ target_include_directories(simple_multi_robot_announcer_component PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 
-ament_target_dependencies(simple_multi_robot_announcer_component
-  geometry_msgs
-  rclcpp
-  hector_multi_robot_msgs
-  rclcpp_components
-  ros_babel_fish
-  sensor_msgs
-  tf2_msgs
-  tf2_ros
+target_link_libraries(simple_multi_robot_announcer_component PUBLIC
+  ${geometry_msgs_TARGETS}
+  ${hector_multi_robot_msgs_TARGETS}
+  rclcpp::rclcpp
+  rclcpp_components::component
+  ros_babel_fish::ros_babel_fish
+  ${sensor_msgs_TARGETS}
+  ${tf2_msgs_TARGETS}
+  tf2_ros::tf2_ros
 )
 
 install(TARGETS simple_multi_robot_announcer_component
@@ -66,31 +66,24 @@ if(BUILD_TESTING)
 
   ament_add_gtest(test_tf_forwarding test/test_tf_forwarding.cpp)
   target_link_libraries(test_tf_forwarding simple_multi_robot_announcer_component)
-  ament_target_dependencies(test_tf_forwarding geometry_msgs rclcpp tf2_msgs)
 
   ament_add_gtest(test_topic_forwarding test/test_topic_forwarding.cpp)
   target_link_libraries(test_topic_forwarding simple_multi_robot_announcer_component)
-  ament_target_dependencies(test_topic_forwarding geometry_msgs rclcpp ros_babel_fish)
 
   ament_add_gtest(test_utils test/test_utils.cpp)
   target_link_libraries(test_utils simple_multi_robot_announcer_component)
-  ament_target_dependencies(test_utils rclcpp)
 
   ament_add_gtest(test_status_reporter test/test_status_reporter.cpp)
   target_link_libraries(test_status_reporter simple_multi_robot_announcer_component)
-  ament_target_dependencies(test_status_reporter rclcpp sensor_msgs hector_multi_robot_msgs)
 
   ament_add_gtest(test_visualization_config test/test_visualization_config.cpp)
   target_link_libraries(test_visualization_config simple_multi_robot_announcer_component)
-  ament_target_dependencies(test_visualization_config rclcpp hector_multi_robot_msgs)
 
   ament_add_gtest(test_sensor_config test/test_sensor_config.cpp)
   target_link_libraries(test_sensor_config simple_multi_robot_announcer_component)
-  ament_target_dependencies(test_sensor_config rclcpp hector_multi_robot_msgs)
 
   ament_add_gtest(test_announcer test/test_announcer.cpp)
   target_link_libraries(test_announcer simple_multi_robot_announcer_component)
-  ament_target_dependencies(test_announcer rclcpp hector_multi_robot_msgs)
 endif()
 
 ament_package()
